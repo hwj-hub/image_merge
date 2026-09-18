@@ -71,6 +71,44 @@ body.anch #toast{bottom:calc(118px + env(safe-area-inset-bottom))}
 @media (min-width:980px){#anchor{display:none}}
 
 /* ── 저장 완료 카드 ── 화면을 덮지 않고 본문 흐름 안에 펼친다 */
+/* -- 앱 안 브라우저 안내 띠 -- 앱 안 WebView 는 파일을 내려받지 못한다 */
+.iabar{display:none;align-items:center;gap:10px;margin:10px 0 0;padding:11px 12px;border-radius:12px;
+  background:var(--warnbg);border:1px solid color-mix(in srgb,var(--warn) 34%,transparent);line-height:1.5}
+body.inapp .iabar{display:flex}
+.iabar .ia-t{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:700;color:var(--fg)}
+.iabar .ia-t small{display:block;font-size:11.5px;font-weight:600;color:var(--muted);margin-top:2px}
+.iabar .ia-go{flex:0 0 auto;font:inherit;font-size:12.5px;font-weight:800;color:#fff;border:0;border-radius:999px;
+  padding:9px 14px;min-height:38px;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+@media (prefers-color-scheme:dark){.iabar .ia-go{color:var(--afg)}}
+.iabar .ia-x{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:transparent;
+  color:var(--muted);font:inherit;font-size:12px;line-height:1;cursor:pointer}
+/* -- 앱 안에서 열었을 때 막는 창 -- 토스트(z-index 99)보다는 아래에 둔다 */
+.iamodal{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:18px;
+  background:rgba(4,14,22,.74);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+body.ia-lock{overflow:hidden}
+body.ia-lock .iamodal{display:flex}
+body.ia-lock .wrap{pointer-events:none}
+.iasheet{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
+  width:100%;max-width:420px;max-height:92vh;overflow:auto;padding:22px 18px 16px;text-align:center}
+.iasheet .iaic{font-size:34px;line-height:1;margin-bottom:10px}
+.iasheet h2{font-size:17.5px;font-weight:800;letter-spacing:-.02em;margin:0 0 10px;line-height:1.45;text-wrap:balance}
+.iap{font-size:13.5px;font-weight:600;color:var(--muted);line-height:1.7;margin:0 0 14px}
+.iap b{color:var(--fg);font-weight:800}
+.iasteps{text-align:left;margin:0 0 16px;padding:12px 14px 12px 32px;border-radius:12px;background:var(--card2);
+  font-size:13px;font-weight:600;color:var(--muted);line-height:1.7}
+.iasteps li+li{margin-top:5px}
+.iasteps b{color:var(--fg);font-weight:800}
+.iabtn{display:block;width:100%;font:inherit;font-size:15px;font-weight:800;color:#fff;border:0;border-radius:12px;
+  padding:14px;min-height:52px;cursor:pointer;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:var(--shadow)}
+@media (prefers-color-scheme:dark){.iabtn{color:var(--afg)}}
+.iafine{margin:12px 0 0;font-size:12px;font-weight:600;color:var(--muted);line-height:1.6}
+.iafine button{font:inherit;font-size:12px;font-weight:700;color:var(--muted);background:none;border:0;padding:6px 8px;
+  text-decoration:underline;cursor:pointer;min-height:36px}
+.dwarn{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--warnbg);font-size:12.5px;font-weight:700;line-height:1.6;color:var(--warn)}
+.dwarn button{font:inherit;font-size:12.5px;font-weight:800;color:var(--accent);background:none;border:0;padding:0;
+  text-decoration:underline;cursor:pointer}
+
 #doneCard{border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}
 #doneCard .ad-lab{margin-top:16px}
 .dmsg{margin:0 0 10px;font-size:14px;font-weight:700;line-height:1.6}
@@ -284,6 +322,14 @@ footer b{color:var(--fg)}
 <div class="ad-slot ad-top" id="ad-top"></div>
 <!-- ══ 광고 슬롯 끝 ══ -->
 
+<!-- 앱 안 브라우저(네이버·카카오톡 등)에서 열면 보이는 띠 — 막는 창을 「그냥 볼게요」로 닫았을 때를 위해 남긴다 -->
+<div class="iabar" id="iabar">
+  <div class="ia-t"><span id="iaMsg">앱 안에서 열려서 사진 저장이 안 될 수 있어요.</span>
+    <small id="iaSub">사진을 고르기 전에 옮기면 다시 고르지 않아도 됩니다.</small></div>
+  <button class="ia-go" id="iaGo" type="button">크롬에서 열기</button>
+  <button class="ia-x" id="iaX" type="button" aria-label="안내 닫기">✕</button>
+</div>
+
 <header>
   <div class="logo"><span class="ico">🧩</span><span>이미지 합치기</span></div>
   <p class="tag">사진 여러 장을 <b>한 장으로</b> · 세로 · 가로 · 격자 · <b>캡처 이어붙이기</b></p>
@@ -481,6 +527,8 @@ footer b{color:var(--fg)}
       <li>너무 길어 잘렸다면 <b>긴 변 최대 크기</b>를 올리거나 나눠서 합쳐 보세요.</li>
       <li>원본 사진은 <b>따로 보관</b>하세요. 합치는 과정에서 화질이 줄어들 수 있습니다.</li>
   </ol>
+  <p class="dwarn hide" id="doneInapp">저장된 사진이 안 보이나요? 앱 안 브라우저는 내려받기가 막혀 있습니다.
+    <button type="button" id="doneGo">다른 브라우저로 열기</button></p>
   <div id="doneAd"><span class="ad-lab">광고</span><div class="ad-slot" id="ad-done"></div></div>
 </section>
 
@@ -606,6 +654,17 @@ footer b{color:var(--fg)}
   사진은 어디에도 전송되지 않으며, 페이지를 연 뒤에는 인터넷 없이도 동작합니다.
 </footer>
 </div>
+<!-- 앱 안에서 열었을 때 막는 창 — .wrap 바깥에 둔다(.wrap 에 inert 를 걸기 때문) -->
+<div class="iamodal" id="iaModal" role="dialog" aria-modal="true" aria-labelledby="iaTitle">
+  <div class="iasheet">
+    <div class="iaic">📱</div>
+    <h2 id="iaTitle">앱 안에서는 합친 사진이 저장되지 않습니다</h2>
+    <p class="iap" id="iaDesc"></p>
+    <ol class="iasteps" id="iaSteps"></ol>
+    <button class="iabtn" id="iaGo2" type="button">크롬에서 열기</button>
+    <p class="iafine"><button type="button" id="iaStay">저장은 안 해도 돼요 · 그냥 볼게요</button></p>
+  </div>
+</div>
 <div id="toast"></div>
 
 <!-- 광고 자리 ④ 하단 오버형 320×50(모바일) — 읽는 구간에서만 올라오고, 작업 중에는
@@ -640,9 +699,9 @@ const MODE_DESC = {
 
 const toastEl = $('#toast');
 let toastT = null;
-function toast(m){
+function toast(m, ms){
   toastEl.textContent = m; toastEl.classList.add('show');
-  clearTimeout(toastT); toastT = setTimeout(()=>toastEl.classList.remove('show'), 2300);
+  clearTimeout(toastT); toastT = setTimeout(()=>toastEl.classList.remove('show'), ms || 2300);
 }
 const nf = n => n.toLocaleString('ko-KR');
 function kb(b){
@@ -997,7 +1056,7 @@ function fittedCanvas(w, h){
 /* ══════════════════════════════════════════════════════════
    미리보기 · 내보내기 (넣거나 바꾸면 그때마다 다시 그린다)
    ══════════════════════════════════════════════════════════ */
-let curURL = null, buildTimer = null, lastBuildMs = 0, building = false, pendingBuild = false, scrolled = false;
+let curBlob = null, curURL = null, buildTimer = null, lastBuildMs = 0, building = false, pendingBuild = false, scrolled = false;
 
 function extOf(){ return opt.fmt === 'image/png' ? 'png' : opt.fmt === 'image/webp' ? 'webp' : 'jpg'; }
 function fileName(){
@@ -1007,6 +1066,7 @@ function fileName(){
 function setDL(blob){
   const a = $('#dl');
   if(curURL){ URL.revokeObjectURL(curURL); curURL = null; }
+  curBlob = blob || null;
   if(!blob){ a.classList.add('off'); a.removeAttribute('href'); $('#tByte').textContent = '–'; return; }
   curURL = URL.createObjectURL(blob);
   a.href = curURL; a.download = fileName(); a.classList.remove('off');
@@ -1170,6 +1230,7 @@ function render(){
 function changed(){ anaCache.key = null; render(); scheduleBuild(); }
 
 async function addFiles(fl){
+  if(document.body.classList.contains('ia-lock')) return;   /* 앱 안 막는 창이 떠 있는 동안 */
   const files = Array.prototype.slice.call(fl).filter(f=>
     /^image\//i.test(f.type) || /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(f.name||''));
   if(!files.length){ toast('이미지 파일이 아닙니다'); return; }
@@ -1324,6 +1385,7 @@ $('#optFixed').addEventListener('change',   e=>{ opt.fixed   = e.target.checked;
 $('#outName').addEventListener('input', ()=>{ const a = $('#dl'); if(a.getAttribute('href')) a.download = fileName(); });
 $('#pvFull').addEventListener('click', ()=>{
   if(!curURL){ toast('아직 준비되지 않았습니다'); return; }
+  if(IA.on){ toast('앱 안에서는 새 창으로 열 수 없습니다. 위쪽 「' + $('#iaGo').textContent + '」를 눌러 주세요.', 5200); return; }
   window.open(curURL, '_blank');
 });
 
@@ -1372,7 +1434,7 @@ const AD = {
     done:   { id: 'DAN-iyofx3w9LnCy7tVE', w: 300, h: 250 },  /* 저장 완료 카드 · 모바일·PC 공통 */
     anchor: { id: 'DAN-J0z49jcUeg8CmfO3', w: 320, h: 50 }    /* 모바일 하단 오버형 (PC 에서는 안 뜬다) */
   },
-  iframeOk: true,  /* iframe 안에서도 띄우려면 true (애드핏에서는 권하지 않음) */
+  iframeOk: false,  /* iframe 안에서도 띄우려면 true (애드핏에서는 권하지 않음) */
   popup: true,      /* 저장 완료 카드 */
   overlay: true,    /* 하단 오버형 */
   init() {
@@ -1468,7 +1530,8 @@ const AD = {
     /* 화면을 돌리거나 창을 줄이면 PC↔모바일이 바뀐다 — 한 번 재 두지 않고 그때마다 다시 본다.
        PC 로 넘어가면 show 가 false 라, 아래에서 바와 여백이 같이 걷힌다 */
     this.pc = window.matchMedia('(min-width:980px)').matches;
-    const show = !this.pc && !this.closed && !this.busy() && window.scrollY > 320;
+    const show = !this.pc && !this.closed && !this.busy() && window.scrollY > 320
+      && !document.body.classList.contains('ia-lock');
     if (show === this.shown) return;
     this.shown = show;
     /* 맨 아래까지 내려간 상태에서 바가 올라오면 늘어난 여백만큼 다시 맞춘다 — 마지막 줄이 바에 가리지 않게 */
@@ -1494,7 +1557,154 @@ const AD = {
   },
   hideDone() { $('#doneCard').classList.add('hide'); this.sync(); }
 };
-AD.init();
+/* ════════════════════════════════════════════════════════════
+   앱 안 브라우저(네이버·카카오톡·라인 등)
+   앱 안 화면은 OS 가 주는 WebView 라 blob: 주소 내려받기가 조용히 막힌다.
+   서버가 없는 도구라 응답 헤더로 내려줄 수도 없다.
+     (1) 앱 안에서 열리면 사용을 막는 창을 띄워 브라우저를 옮기게 한다
+         - 사진을 다 고르고 맞춘 뒤에 저장이 안 되는 걸 알면 처음부터 다시 골라야 한다
+     (2) 그래도 저장을 누르면 blob: 대신 data: 주소로 시도한다(10MB 까지)
+     (3) 아이폰은 사파리를 강제로 열 수 없어 주소 복사 + 메뉴 안내로 간다
+   ════════════════════════════════════════════════════════════ */
+const UA = navigator.userAgent || '';
+const IA = {
+  naver: /NAVER\(inapp/i.test(UA),
+  kakao: /KAKAOTALK/i.test(UA),
+  line: /\bLine\//i.test(UA),
+  ios: /iPhone|iPad|iPod/i.test(UA),
+  android: /Android/i.test(UA)
+};
+IA.on = IA.naver || IA.kakao || IA.line ||
+  /Instagram|FBAN|FBAV|FB_IAB|DaumApps|everytimeApp|band\/|KAKAOSTORY/i.test(UA) ||
+  (IA.android && /;\s*wv\)/i.test(UA));   /* 안드로이드 WebView 표시 */
+const IA_MAX = 10 * 1048576;               /* data: 주소는 base64 라 4/3 배로 커진다 - 그 이상은 막는다 */
+
+/* 다른 브라우저로 넘기기. 앱마다 통로가 달라 순서대로 고른다 */
+function externalUrl() {
+  const url = location.href;
+  if (IA.kakao) return 'kakaotalk://web/openExternal?url=' + encodeURIComponent(url);
+  if (IA.line) return url + (url.indexOf('?') >= 0 ? '&' : '?') + 'openExternalBrowser=1';
+  /* 안드로이드는 크롬을 직접 연다. 크롬이 없으면 fallback 주소로 되돌아온다 */
+  if (IA.android) return 'intent://' + url.replace(/^https?:\/\//i, '') +
+    '#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=' + encodeURIComponent(url) + ';end';
+  return '';          /* 아이폰은 사파리를 강제로 열 수 없다 */
+}
+function fallbackCopy(text, done) {
+  const t = document.createElement('textarea');
+  t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;left:-9999px;top:0';
+  document.body.appendChild(t); t.select(); t.setSelectionRange(0, text.length);
+  try { document.execCommand('copy'); done(); } catch (e) { toast('주소를 길게 눌러 복사해 주세요.', 4200); }
+  t.remove();
+}
+function copyAddr(guide) {
+  const url = location.href;
+  const done = () => toast(guide ? '주소를 복사했습니다. 사파리를 열고 붙여 넣거나, 메뉴에서 「다른 브라우저로 열기」를 누르세요.' : '주소를 복사했습니다.', 5200);
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(url).then(done, () => fallbackCopy(url, done)); return; }
+  } catch (e) { /* 아래로 */ }
+  fallbackCopy(url, done);
+}
+/* 아이폰은 복사 뒤 할 일을 창 안에 바로 적는다 — 토스트는 창 위에 잠깐 떴다 사라져 안 읽힌다 */
+function iaCopied() {
+  $('#iaDesc').innerHTML = '주소를 <b>복사했습니다.</b> 이제 <b>사파리</b>를 열고 주소창에 붙여 넣으세요.';
+  $('#iaSteps').innerHTML = '<li>홈 화면에서 <b>사파리</b>를 엽니다.</li>' +
+    '<li>주소창을 길게 눌러 <b>붙여넣기</b> 하세요.</li>' +
+    '<li>또는 이 화면의 <b>메뉴</b> → 「다른 브라우저로 열기」.</li>';
+}
+/* 앱 안에서는 blob: 이 통하지 않아 data: 주소로 바꿔 넘긴다. 막혔으면 false */
+function downloadInApp(blob, name) {
+  if (blob.size > IA_MAX) {
+    toast('앱 안에서는 10MB가 넘는 사진을 저장할 수 없습니다. 형식을 JPG로 바꾸거나 긴 변 최대 크기를 줄여 보고, ' +
+          '안 되면 위쪽 「' + $('#iaGo').textContent + '」를 눌러 주세요.', 6400);
+    return false;
+  }
+  const go = href => {
+    const a = document.createElement('a');
+    a.href = href; a.download = name; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  const fr = new FileReader();
+  fr.onload = () => { try { go(fr.result); } catch (e) { /* 안내로 넘어간다 */ } };
+  fr.onerror = () => toast('앱 안에서는 저장이 막혀 있습니다. 위쪽 「' + $('#iaGo').textContent + '」를 눌러 주세요.', 5200);
+  fr.readAsDataURL(blob);
+  return true;
+}
+function lockInApp(on) {
+  document.body.classList.toggle('ia-lock', on);
+  const w = document.querySelector('.wrap');
+  if (on) w.setAttribute('inert', ''); else w.removeAttribute('inert');
+  if (!on) $('#iaModal').blur();
+}
+function initInApp() {
+  if (!IA.on) return;
+  const app = IA.naver ? '네이버 앱' : IA.kakao ? '카카오톡' : IA.line ? '라인' : '앱';
+  const copyOnly = IA.ios && !IA.kakao && !IA.line;   /* 아이폰은 사파리를 강제로 열 수 없다 */
+  /* 카카오·라인은 앱의 자체 통로로 기본 브라우저가 열린다.
+     크롬을 콕 집어 여는 것은 안드로이드 intent:// 뿐이라 단추 문구와 순서를 나눈다 */
+  const chromeIntent = IA.android && !IA.kakao && !IA.line;
+
+  document.body.classList.add('inapp');
+  $('#iaMsg').textContent = app + ' 안에서는 합친 사진이 저장되지 않습니다.';
+  $('#doneInapp').classList.remove('hide');
+
+  $('#iaDesc').innerHTML = '<b>' + app + '</b> 안에서 열렸습니다. 이 화면에서는 ' +
+    '<b>합친 사진을 내려받을 수 없습니다.</b> 다 맞춰 놓아도 받을 수 없으니 ' +
+    '<b>사진을 고르기 전에</b> 브라우저를 옮겨 주세요.';
+  const steps = copyOnly
+    ? ['아래 <b>주소 복사</b>를 누르세요.',
+       '오른쪽 아래 <b>메뉴</b>에서 「다른 브라우저로 열기」를 누르거나, <b>사파리</b> 주소창에 붙여 넣으세요.']
+    : chromeIntent
+      ? ['아래 <b>크롬에서 열기</b>를 누르세요.',
+         '크롬이 없으면 오른쪽 위 <b>메뉴</b>에서 「다른 브라우저로 열기」를 누르세요.']
+      : ['아래 <b>다른 브라우저로 열기</b>를 누르세요.',
+         '열리지 않으면 ' + (IA.ios ? '화면의' : '오른쪽 위') + ' <b>메뉴</b>에서 「다른 브라우저로 열기」를 누르세요.'];
+  $('#iaSteps').innerHTML = steps.map(t => '<li>' + t + '</li>').join('');
+  const label = copyOnly ? '주소 복사' : chromeIntent ? '크롬에서 열기' : '다른 브라우저로 열기';
+  $('#iaGo').textContent = label;
+  $('#iaGo2').textContent = label;
+  $('#doneGo').textContent = label;
+  $('#iaSub').textContent = copyOnly
+    ? '사파리에 붙여 넣거나, 오른쪽 아래 메뉴에서 「다른 브라우저로 열기」를 누르세요.'
+    : '사진을 고르기 전에 옮기면 다시 고르지 않아도 됩니다.';
+
+  /* 윗머리 띠를 X 로 닫았으면 새로 고쳐도 띠는 다시 띄우지 않는다(막는 창은 열 때마다 뜬다) */
+  let hidden = false;
+  try { hidden = sessionStorage.getItem('image_merge.iahide') === '1'; } catch (e) { /* 무시 */ }
+  if (hidden) document.body.classList.remove('inapp');
+  lockInApp(true);
+}
+
+/* 내려받기 — 보통 브라우저는 <a download href=blob> 을 그대로 누르게 두고,
+   앱 안에서만 문서 캡처 단계에서 가로채 data: 주소로 돌린다.
+   막혔으면(10MB 초과) 전파를 끊어 「저장했습니다」 카드가 거짓으로 펼쳐지지 않게 한다 */
+document.addEventListener('click', e => {
+  if (!IA.on) return;
+  const a = e.target && e.target.closest ? e.target.closest('#dl') : null;
+  if (!a) return;
+  e.preventDefault();
+  if (!curBlob || a.classList.contains('off')) { e.stopPropagation(); return; }
+  if (!downloadInApp(curBlob, fileName())) e.stopPropagation();
+}, true);
+
+/* 막는 창·윗머리 띠·저장 완료 카드의 「다른 브라우저로 열기」 */
+const goOut = () => { const u = externalUrl(); if (u) { location.href = u; return; } copyAddr(true); iaCopied(); };
+$('#iaGo').addEventListener('click', goOut);
+$('#iaGo2').addEventListener('click', goOut);
+$('#doneGo').addEventListener('click', goOut);
+/* 못 고치는 경우(앱 판별이 틀렸거나 그냥 보기만 할 때)를 위한 좁은 문 */
+$('#iaStay').addEventListener('click', () => {
+  lockInApp(false);
+  AD.init();          /* 창이 떠 있는 동안 미뤄 둔 광고를 이제 부른다 */
+  toast('저장은 안 됩니다. 합친 사진을 받으려면 위쪽 「' + $('#iaGo').textContent + '」를 눌러 주세요.', 5200);
+});
+$('#iaX').addEventListener('click', () => {
+  document.body.classList.remove('inapp');
+  try { sessionStorage.setItem('image_merge.iahide', '1'); } catch (e) { /* 무시 */ }
+});
+
+initInApp();
+/* 앱 안에서 막는 창이 떠 있으면 광고는 창을 닫을 때 부른다 - 창 뒤에 깔린 광고는 보는 사람 없이 노출만 잡힌다 */
+if (!document.body.classList.contains('ia-lock')) AD.init();
 </script>
 </body>
 </html>
