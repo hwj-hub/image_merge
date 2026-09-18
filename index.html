@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0284c7">
+<title>이미지 합치기 · 사진 여러 장을 한 장으로 - 세로·가로·격자·캡처 이어붙이기</title>
+<meta name="description" content="사진 여러 장을 한 장으로 합칩니다. 세로로 길게, 가로로 나란히, 격자 콜라주, 그리고 나눠 찍은 스크롤 캡처를 겹치는 부분까지 자동으로 찾아 이어붙입니다. 카톡·메신저 대화 캡처, 블로그 상세페이지, 상품 이미지에 그대로 씁니다. 넣는 순간 결과가 미리보기로 보이고 보이는 그대로 내려받습니다. 파일을 어디에도 올리지 않고 내 브라우저 안에서만 처리하므로 대화 내용이나 개인 사진도 안전합니다. 설치도 회원가입도 워터마크도 없습니다.">
+<meta property="og:title" content="이미지 합치기 · 사진 여러 장을 한 장으로">
+<meta property="og:description" content="업로드 없이 브라우저 안에서만 처리합니다. 세로 · 가로 · 격자 · 스크롤 캡처 자동 이어붙이기.">
+<meta property="og:type" content="website">
+<!-- 링크 미리보기 그림: 스크래퍼는 절대 주소만 읽으므로 배포 주소로 적는다. 그림은 make_thumbnail.py og 가 만든 og-image.png(1200×630) -->
+<meta property="og:image" content="https://hwj-hub.github.io/image_merge/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="이미지 합치기 — 나눠 찍은 캡처 세 장이 겹친 부분 없이 한 장의 긴 이미지로 이어진 화면">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E">
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --bg:#f2f7fb; --card:#fff; --card2:#f6fafd; --fg:#0d1b26; --muted:#5a6b79; --line:#dde8f0;
+  --accent:#0284c7; --accent2:#38bdf8; --afg:#fff;
+  --ok:#059669; --okbg:#e8f7f1; --warn:#b45309; --warnbg:#fef4e6; --danger:#dc2626;
+  --shadow:0 1px 2px rgba(13,27,38,.05),0 8px 24px -14px rgba(13,27,38,.30);
+  --r:16px;
+}
+@media (prefers-color-scheme:dark){
+ :root{
+  --bg:#0a141c; --card:#14222e; --card2:#0f1b24; --fg:#e6f1f8; --muted:#93a8b8; --line:#22394a;
+  --accent:#38bdf8; --accent2:#7dd3fc; --afg:#06283a;
+  --ok:#34d399; --okbg:#0f2a22; --warn:#fbbf24; --warnbg:#2a2110; --danger:#f87171;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -16px rgba(0,0,0,.8);
+ }
+}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--fg);line-height:1.55;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;
+  word-break:keep-all;overflow-wrap:anywhere}
+.wrap{max-width:940px;margin:0 auto;padding:0 14px calc(56px + env(safe-area-inset-bottom))}
+
+/* ══ 광고 슬롯 ══ 자리만 비워 두고 화면 폭에 맞는 크기를 AD 가 채운다.
+   크기를 미리 잡아 두어 광고가 늦게 떠도 화면이 밀리지 않는다(애드핏: 광고 공간은 고정되어야 함) */
+.ad-slot{display:flex;align-items:center;justify-content:center;margin:10px auto;max-width:100%}
+.ad-top{width:320px;height:50px;max-width:100%}
+.ad-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);
+  border-radius:8px;background:var(--card2);color:var(--muted);font-size:11px;letter-spacing:.08em;font-weight:600}
+.ad-lab{display:block;text-align:center;font-size:9.5px;font-weight:700;letter-spacing:.14em;color:var(--muted);opacity:.7;margin:12px 0 -4px}
+body.no-ad .ad-slot,.ad-none{display:none !important}
+/* 본문 광고는 버튼·입력칸에서 넉넉히 떼어 놓는다 — 실수로 눌리는 자리는 금지 */
+#ad-mid{margin:18px auto}
+
+/* ── 하단 오버형 ── 콘텐츠를 가리지 않도록 본문 아래 여백을 같이 늘린다(애드핏: 콘텐츠를 덮는 배치 금지).
+   핵심 작업 중(작업 카드가 화면에 있거나 입력칸에 커서가 있을 때)에는 띄우지 않는다 */
+#anchor{position:fixed;left:0;right:0;bottom:0;z-index:45;display:flex;align-items:center;justify-content:center;
+  background:var(--card);border-top:1px solid var(--line);box-shadow:0 -8px 22px -14px rgba(0,0,0,.55);
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));transform:translateY(120%);
+  /* 바 위쪽에 붙은 「광고」 라벨·닫기는 translateY 로 내려도 화면에 걸쳐 남는다 — 통째로 감춘다 */
+  visibility:hidden;pointer-events:none;transition:transform .22s,visibility 0s linear .22s}
+#anchor.on{transform:none;visibility:visible;pointer-events:auto;transition:transform .22s,visibility 0s}
+#anchor .ad-slot{margin:0}
+#anchor .amk{position:absolute;left:10px;top:-11px;font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--muted);
+  background:var(--card);border:1px solid var(--line);border-radius:5px;padding:0 5px;line-height:15px}
+/* 닫기는 광고 영역 밖에 둔다 — 광고 안에 닫기 버튼을 넣는 것은 금지(오클릭 방지) */
+#anchor .axl{position:absolute;right:6px;top:-38px;width:36px;height:36px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:13px;line-height:1;box-shadow:var(--shadow)}
+#anchor .axl::before{content:'';position:absolute;inset:-6px}
+body.anch .wrap{padding-bottom:calc(124px + env(safe-area-inset-bottom))}
+body.anch #toast{bottom:calc(118px + env(safe-area-inset-bottom))}
+@media (min-width:980px){#anchor{display:none}}
+
+/* ── 저장 완료 카드 ── 화면을 덮지 않고 본문 흐름 안에 펼친다 */
+#doneCard{border-color:color-mix(in srgb,var(--ok) 40%,var(--line))}
+#doneCard .ad-lab{margin-top:16px}
+.dmsg{margin:0 0 10px;font-size:14px;font-weight:700;line-height:1.6}
+.dsteps{margin:0;padding:0 0 0 20px;font-size:13px;font-weight:600;line-height:1.75;color:var(--muted)}
+.dsteps b{color:var(--fg);font-weight:800}
+
+header{text-align:center;padding:16px 0 4px}
+.logo{display:inline-flex;align-items:center;gap:9px;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.logo .ico{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:17px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:var(--shadow)}
+.tag{font-size:14.5px;font-weight:600;color:var(--muted);margin:8px 0 0}
+.tag b{color:var(--fg)}
+.badges{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:10px}
+.badge{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--okbg);color:var(--ok);border:1px solid transparent}
+.badge.gray{background:var(--card2);color:var(--muted);border-color:var(--line)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin-top:14px}
+.card h2{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 12px;letter-spacing:.07em;
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card h2 .n{color:var(--accent);letter-spacing:0}
+.hide{display:none !important}
+
+#drop{border:2px dashed var(--line);border-radius:var(--r);background:var(--card);padding:30px 16px;text-align:center;
+  cursor:pointer;transition:.18s;margin-top:14px}
+#drop:hover,#drop.over{border-color:var(--accent);background:var(--card2)}
+#drop.over{box-shadow:0 0 0 4px rgba(2,132,199,.16)}
+#drop .big{font-size:38px;line-height:1}
+#drop .t1{font-weight:800;font-size:16.5px;margin-top:8px}
+#drop .t2{color:var(--muted);font-size:12.5px;margin-top:4px}
+#drop.small{padding:14px 16px;margin-top:12px}
+#drop.small .big{font-size:22px}
+#drop.small .t1{font-size:14px;margin-top:4px}
+#drop.small .t2{display:none}
+#file,#fileMore{display:none}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.mini{border:1px solid var(--line);background:var(--card2);color:var(--fg);font:inherit;font-size:12.5px;font-weight:700;
+  padding:9px 13px;border-radius:999px;cursor:pointer;min-height:42px;transition:.15s}
+.mini:hover{border-color:var(--accent)}
+.mini.danger:hover{border-color:var(--danger);color:var(--danger)}
+
+#list{list-style:none;margin:0;padding:0}
+.item{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item.drag{opacity:.45}
+.item.overdrop{box-shadow:0 -2px 0 var(--accent) inset}
+.item.bad .fname{color:var(--danger)}
+.idx{flex:0 0 30px;height:30px;margin-top:2px;border-radius:9px;background:var(--card2);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:var(--muted);
+  font-variant-numeric:tabular-nums;cursor:grab}
+.thumb{flex:0 0 52px;width:52px;height:52px;border-radius:9px;border:1px solid var(--line);background:var(--card2);
+  object-fit:contain;display:block}
+.meta{flex:1;min-width:0}
+.fname{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsz{font-size:12px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:3px 8px;align-items:center}
+.fsz b{color:var(--accent);font-weight:800}
+.cut{color:var(--ok);font-weight:800}
+.err{color:var(--danger);font-weight:700}
+.opts{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.rot{flex:0 0 auto;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;font-size:12.5px;
+  font-weight:800;min-height:40px;padding:0 12px;border-radius:9px;cursor:pointer;white-space:nowrap;
+  min-width:74px;text-align:center;font-variant-numeric:tabular-nums}
+.rot.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.ctl{display:flex;gap:4px;flex:0 0 auto}
+.sq{border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;font-size:15px;font-weight:800;
+  width:36px;height:40px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.sq:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.sq:disabled{opacity:.3;cursor:not-allowed}
+.sq.x:hover{border-color:var(--danger);color:var(--danger)}
+
+/* ── 모드 탭 ── */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.tab{flex:1 1 auto;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;
+  font-size:13px;font-weight:800;padding:10px 12px;border-radius:11px;cursor:pointer;min-height:44px;transition:.15s;
+  white-space:nowrap}
+.tab:hover{border-color:var(--accent)}
+.tab.on{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;box-shadow:var(--shadow)}
+@media (prefers-color-scheme:dark){.tab.on{color:var(--afg)}}
+
+/* ── 옵션 폼 ── */
+.row{margin-top:15px}
+.row:first-child{margin-top:0}
+.lab{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:13.5px;font-weight:800;margin-bottom:8px}
+.lab .hint{font-weight:500;color:var(--muted);font-size:12px;text-align:right}
+.lab .v{font-weight:800;color:var(--accent);font-variant-numeric:tabular-nums;font-size:13px}
+input[type=text],select{font:inherit;font-size:15px;color:var(--fg);background:var(--card2);border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;min-height:44px;width:100%}
+input[type=text]:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+input[type=range]{width:100%;height:42px;accent-color:var(--accent);margin:0}
+.grid2{display:flex;gap:10px;flex-wrap:wrap}
+.grid2>div{flex:1 1 160px;min-width:0}
+.seg{display:flex;gap:5px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;border:1px solid var(--line);background:var(--card2);color:var(--muted);font:inherit;
+  font-size:13px;font-weight:800;padding:10px 8px;border-radius:10px;cursor:pointer;min-height:44px;transition:.15s;min-width:64px}
+.seg button:hover{border-color:var(--accent)}
+.seg button.on{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.chk{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;font-weight:700;cursor:pointer;padding:6px 0}
+.chk input{width:19px;height:19px;accent-color:var(--accent);flex:0 0 auto;margin:3px 0 0}
+.chk .d{display:block;font-size:12px;font-weight:600;color:var(--muted);line-height:1.6;margin-top:1px}
+.colorbox{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+input[type=color]{width:52px;height:44px;padding:2px;border:1px solid var(--line);border-radius:10px;background:var(--card2);cursor:pointer}
+.swatches{display:flex;gap:5px;flex-wrap:wrap}
+.sw{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);cursor:pointer;padding:0}
+.sw:hover{border-color:var(--accent)}
+
+.tot{display:flex;gap:9px;flex-wrap:wrap;margin-top:4px}
+.tot div{flex:1 1 30%;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px}
+.tot b{display:block;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.03em}
+.tot span{display:block;font-size:18px;font-weight:800;margin-top:2px;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+
+.actions{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}
+.btn{flex:1 1 150px;border:1px solid var(--line);background:var(--card2);color:var(--fg);font:inherit;font-weight:800;font-size:15px;
+  padding:13px 14px;border-radius:12px;cursor:pointer;transition:.15s;min-height:52px;display:flex;align-items:center;justify-content:center;gap:7px;
+  text-decoration:none}
+.btn:hover:not(:disabled){border-color:var(--accent)}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:transparent;box-shadow:var(--shadow)}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn.off{opacity:.42;pointer-events:none}
+@media (prefers-color-scheme:dark){.btn.primary{color:var(--afg)}}
+
+/* ── 미리보기 ── */
+.pvbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.pvtitle{flex:1 1 130px;min-width:0;font-size:12.5px;font-weight:700;color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.pvstate{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0;white-space:nowrap}
+.pvstate.busy{color:var(--accent)}
+.pvbox{width:100%;max-height:min(70vh,560px);overflow:auto;border:1px solid var(--line);border-radius:12px;
+  background:var(--card2);
+  background-image:linear-gradient(45deg,rgba(128,128,128,.12) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.12) 75%),
+                   linear-gradient(45deg,rgba(128,128,128,.12) 25%,transparent 25%,transparent 75%,rgba(128,128,128,.12) 75%);
+  background-size:18px 18px;background-position:0 0,9px 9px;
+  -webkit-overflow-scrolling:touch;display:block}
+#pv{display:block;width:100%;height:auto}
+.pvbox.dim{opacity:.45;transition:opacity .15s}
+
+.note{border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:600;line-height:1.65;margin-top:11px}
+.note b{font-weight:800}
+.note.info{background:var(--card2);color:var(--muted);border:1px solid var(--line)}
+.note.good{background:var(--okbg);color:var(--ok)}
+.note.warn{background:var(--warnbg);color:var(--warn)}
+.note.bad{background:#fdecec;color:var(--danger)}
+@media (prefers-color-scheme:dark){.note.bad{background:#2c1414}}
+
+.use{list-style:none;margin:0;padding:0}
+.use li{position:relative;padding-left:26px;margin-bottom:13px;font-size:13.5px;font-weight:600;line-height:1.65}
+.use li:last-child{margin-bottom:0}
+.use li::before{content:"▸";position:absolute;left:4px;top:0;color:var(--accent);font-weight:800}
+.use li b{font-weight:800}
+.use li .d{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-top:3px;line-height:1.7}
+
+details{border-top:1px solid var(--line);padding:12px 0}
+details:first-of-type{border-top:0}
+summary{cursor:pointer;font-weight:700;font-size:14px;list-style:none;padding:10px 0;margin:-10px 0}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"＋ ";color:var(--accent);font-weight:800}
+details[open] summary::before{content:"－ "}
+details p{margin:8px 0 0;font-size:13.5px;color:var(--muted);line-height:1.8}
+details p b{color:var(--fg)}
+
+footer{text-align:center;color:var(--muted);font-size:12px;margin-top:22px;line-height:1.8}
+footer b{color:var(--fg)}
+#toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:#0d1b26;color:#fff;font-size:13.5px;font-weight:700;
+  padding:11px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:92vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-color-scheme:dark){#toast{background:#e6f1f8;color:#06283a}}
+
+@media (max-width:430px){
+  .card{padding:14px}
+  .tot div{flex:1 1 0;padding:9px 8px}
+  .tot span{font-size:15px}
+  .idx{flex:0 0 26px;height:26px}
+  .thumb{flex:0 0 44px;width:44px;height:44px}
+  .sq{width:32px;height:36px}
+  .tab{font-size:12.5px;padding:10px 8px}
+  .pvbox{max-height:min(62vh,440px)}
+}
+
+/* ══ 주의 문구 ══════════════════════════════════════════
+   결과가 원본과 달라질 수 있는 지점과
+   법적 책임을 지지 않는다는 점을 페이지마다 고지한다.
+   ══════════════════════════════════════════════════════ */
+.nbx{border:1px solid var(--warn);border-radius:14px;background:var(--warnbg);padding:14px 15px;margin-top:14px}
+.nbx-h{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;color:var(--warn);margin:0 0 10px}
+.nbx-h .ic{flex:0 0 auto;width:19px;height:19px;border-radius:6px;background:var(--warn);color:var(--warnbg);
+  font-size:12px;font-weight:800;display:grid;place-items:center;line-height:1}
+.nbx ul{list-style:none;margin:0;padding:0}
+.nbx li{position:relative;padding-left:12px;margin-bottom:7px;font-size:12px;font-weight:600;line-height:1.68;color:var(--warn)}
+.nbx li:last-child{margin-bottom:0}
+.nbx li::before{content:"·";position:absolute;left:1px;top:-1px;font-weight:800}
+.nbx li b{font-weight:800}
+.nbx .nbx-f{margin:11px 0 0;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--warn) 32%,transparent);
+  font-size:12px;font-weight:700;line-height:1.72;color:var(--warn)}
+.nbx .nbx-f b{font-weight:800}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ╔══════════════════════════════════════════════════════════════════════╗
+     ║  광고 자리 ① 맨 위 · 320×50 (모바일·PC 같은 크기)                     ║
+     ║  단위 ID 는 스크립트 아래쪽 AD.units 한 곳에서 바꿉니다.               ║
+     ║  ins·script 를 여기 직접 쓰지 않고 AD 가 넣는 이유                     ║
+     ║   · 보이는 자리만 부르려고(안 보이는 광고는 부르지 않음)               ║
+     ║   · 한 페이지 4개 제한을 코드 한 곳에서 지키려고                       ║
+     ║  크기는 휴대폰에 들어가는 것만 씁니다 — 320×50 · 320×100 · 300×250     ║
+     ║  한 화면에 4곳 — ① 맨 위 ② 본문 ③ 저장 완료 카드 ④ 하단 오버형(모바일) ║
+     ║  ※ 티스토리 글에 이 도구를 iframe 으로 실을 때는 광고를 넣지 않습니다  ║
+     ║     (아이프레임에서의 광고 호출 금지) — 글 쪽은 그 글의 단위를 씁니다  ║
+     ╚══════════════════════════════════════════════════════════════════════╝ -->
+<div class="ad-slot ad-top" id="ad-top"></div>
+<!-- ══ 광고 슬롯 끝 ══ -->
+
+<header>
+  <div class="logo"><span class="ico">🧩</span><span>이미지 합치기</span></div>
+  <p class="tag">사진 여러 장을 <b>한 장으로</b> · 세로 · 가로 · 격자 · <b>캡처 이어붙이기</b></p>
+  <div class="badges">
+    <span class="badge">🔒 사진이 서버로 전송되지 않음</span>
+    <span class="badge gray">무료 · 무제한 · 워터마크 없음</span>
+    <span class="badge gray">넣는 순간 미리보기</span>
+    <span class="badge gray">겹친 부분 자동 제거</span>
+  </div>
+</header>
+
+<div id="drop">
+  <div class="big">🖼️</div>
+  <div class="t1">사진을 여기에 놓거나 눌러서 선택</div>
+  <div class="t2">여러 장 한 번에 · 붙여넣기(Ctrl+V)도 됩니다 · JPG · PNG · WEBP · GIF · BMP</div>
+  <input type="file" id="file" accept="image/*" multiple>
+</div>
+
+<section class="card hide" id="listCard">
+  <h2><span>불러온 사진 <span class="n" id="cnt">0</span>장</span><span class="n" id="sumPx"></span></h2>
+  <div class="toolbar">
+    <button class="mini" id="addMore">＋ 사진 추가</button>
+    <button class="mini" id="sortName">이름순</button>
+    <button class="mini" id="reverse">순서 뒤집기</button>
+    <button class="mini danger" id="clear">전체 삭제</button>
+  </div>
+  <ul id="list"></ul>
+  <input type="file" id="fileMore" accept="image/*" multiple>
+  <div class="note info">
+    왼쪽 번호를 <b>끌어서</b> 순서를 바꿉니다(모바일에서는 ↑↓ 버튼).
+    나눠 찍은 캡처는 <b>이름순</b>을 누르면 촬영 순서대로 정렬됩니다.
+    <b>바꾸는 즉시 아래 미리보기가 다시 그려집니다.</b>
+  </div>
+</section>
+
+<section class="card hide" id="optCard">
+  <h2><span>어떻게 합칠까요</span><span class="n" id="modeHint"></span></h2>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-m="v">↕ 세로로</button>
+    <button class="tab" data-m="h">↔ 가로로</button>
+    <button class="tab" data-m="g">▦ 격자</button>
+    <button class="tab" data-m="s">📱 캡처 이어붙이기</button>
+  </div>
+
+  <div class="note info" id="modeDesc"></div>
+
+  <!-- 스크롤 캡처 전용 -->
+  <div class="row r-s hide">
+    <label class="chk"><input type="checkbox" id="optOverlap" checked>
+      <span>겹치는 부분 자동으로 찾아 지우기
+        <span class="d">앞 사진의 끝과 뒷 사진의 시작이 같은 만큼을 찾아 잘라 냅니다. 스크롤하며 나눠 찍은 캡처가 한 장처럼 이어집니다.</span></span></label>
+    <label class="chk"><input type="checkbox" id="optFixed" checked>
+      <span>모든 캡처에 똑같이 있는 위·아래 띠 지우기
+        <span class="d">상태표시줄·앱 제목줄·입력창처럼 스크롤해도 그대로인 부분을 찾아, 첫 장의 위쪽과 마지막 장의 아래쪽만 남깁니다.</span></span></label>
+  </div>
+
+  <!-- 크기 맞추기 : 세로/가로/캡처 -->
+  <div class="row r-v r-h r-s">
+    <div class="lab"><span id="fitLab">가로 폭 맞추기</span><span class="hint">크기가 다른 사진을 어디에 맞출지</span></div>
+    <select id="fit">
+      <option value="min">좁은 쪽에 맞추기 (잘림 없음 · 권장)</option>
+      <option value="max">넓은 쪽에 맞추기 (작은 사진이 커짐)</option>
+      <option value="first">첫 번째 사진에 맞추기</option>
+      <option value="none">원본 크기 그대로 (남는 곳은 배경색)</option>
+    </select>
+  </div>
+
+  <!-- 격자 전용 -->
+  <div class="row r-g hide">
+    <div class="grid2">
+      <div>
+        <div class="lab"><span>열 수</span></div>
+        <select id="cols">
+          <option value="0">자동</option>
+          <option value="2">2열</option><option value="3">3열</option>
+          <option value="4">4열</option><option value="5">5열</option><option value="6">6열</option>
+        </select>
+      </div>
+      <div>
+        <div class="lab"><span>칸 비율</span></div>
+        <select id="ratio">
+          <option value="0">원본 평균</option>
+          <option value="1">1 : 1 정사각</option>
+          <option value="1.3333">4 : 3 가로</option>
+          <option value="0.75">3 : 4 세로</option>
+          <option value="1.7778">16 : 9 와이드</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="row r-g hide">
+    <div class="lab"><span>칸 채우는 방법</span></div>
+    <div class="seg" id="gfill">
+      <button data-v="cover" class="on">꽉 채우기 (가장자리 잘림)</button>
+      <button data-v="contain">전체 보이기 (여백 생김)</button>
+    </div>
+  </div>
+
+  <!-- 정렬 : 원본 크기 그대로일 때 -->
+  <div class="row r-align hide">
+    <div class="lab"><span id="alignLab">정렬</span></div>
+    <div class="seg" id="align">
+      <button data-v="start">시작</button>
+      <button data-v="center" class="on">가운데</button>
+      <button data-v="end">끝</button>
+    </div>
+  </div>
+
+  <div class="row" id="gapRow">
+    <div class="lab"><span>사진 사이 간격</span><span class="v"><span id="gapV">0</span>px</span></div>
+    <input type="range" id="gap" min="0" max="80" step="1" value="0">
+  </div>
+
+  <div class="row">
+    <div class="lab"><span>바깥 여백</span><span class="v"><span id="padV">0</span>px</span></div>
+    <input type="range" id="pad" min="0" max="80" step="1" value="0">
+  </div>
+
+  <div class="row">
+    <div class="lab"><span>배경색</span><span class="hint">간격·여백·빈 칸을 채웁니다</span></div>
+    <div class="colorbox">
+      <input type="color" id="bg" value="#ffffff">
+      <div class="swatches" id="sw"></div>
+    </div>
+    <label class="chk" style="margin-top:4px"><input type="checkbox" id="bgTrans">
+      <span>배경 투명하게
+        <span class="d">PNG · WEBP로 저장할 때만 적용됩니다. JPG는 투명을 담지 못해 흰색으로 채워집니다.</span></span></label>
+  </div>
+</section>
+
+<section class="card hide" id="pvCard">
+  <h2><span>미리보기 <span class="n" id="pvSub"></span></span><span class="pvstate" id="pvState"></span></h2>
+  <div class="pvbar">
+    <span class="pvtitle" id="pvTitle"></span>
+    <button class="mini" id="pvFull">새 창에서 원본 크기로 보기</button>
+  </div>
+  <div class="pvbox" id="pvBox"><canvas id="pv"></canvas></div>
+  <div class="note info hide" id="pvNote"></div>
+  <div class="note warn hide" id="pvWarn"></div>
+</section>
+
+<section class="card hide" id="outCard">
+  <h2><span>내보내기</span><span class="n" id="outHint"></span></h2>
+
+  <div class="tot">
+    <div><b>합친 사진</b><span id="tCnt">0장</span></div>
+    <div><b>결과 크기</b><span id="tSize">–</span></div>
+    <div><b>파일 용량</b><span id="tByte">–</span></div>
+  </div>
+
+  <div class="row">
+    <div class="lab"><span>파일 형식</span></div>
+    <div class="seg" id="fmt">
+      <button data-v="image/jpeg" class="on">JPG</button>
+      <button data-v="image/png">PNG</button>
+      <button data-v="image/webp">WEBP</button>
+    </div>
+  </div>
+
+  <div class="row" id="qRow">
+    <div class="lab"><span>품질</span><span class="v"><span id="qV">92</span></span></div>
+    <input type="range" id="q" min="50" max="100" step="1" value="92">
+  </div>
+
+  <div class="row">
+    <div class="lab"><span>긴 변 최대 크기</span><span class="hint">너무 큰 결과를 줄여 저장합니다</span></div>
+    <select id="cap">
+      <option value="0">제한 없음 (원본 크기)</option>
+      <option value="2000">2,000px</option>
+      <option value="4000">4,000px</option>
+      <option value="8000">8,000px</option>
+      <option value="16000">16,000px</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <div class="lab"><span>저장할 파일 이름</span><span class="hint">확장자는 자동으로 붙습니다</span></div>
+    <input type="text" id="outName" value="합친사진" spellcheck="false">
+  </div>
+
+  <div class="actions">
+    <a class="btn primary off" id="dl" download>⬇ 사진 내려받기</a>
+  </div>
+
+  <div class="note warn hide" id="warnBox"></div>
+</section>
+
+<!-- 광고 자리 ③ 저장 완료 카드 300×250 — 저장을 누른 다음에 펼쳐지고, 화면을 덮지 않습니다.
+     닫기는 카드 머리(광고에서 멀리 떨어진 곳)에 둡니다 — 광고 안 닫기 버튼은 금지 -->
+<section class="card hide" id="doneCard">
+  <h2><span>저장했습니다</span><button class="mini" id="doneHide" type="button">닫기</button></h2>
+  <p class="dmsg" id="doneMsg"></p>
+  <ol class="dsteps">
+      <li><b>사진을 열어</b> 순서와 겹친 부분이 제대로 잘렸는지 확인하세요.</li>
+      <li>너무 길어 잘렸다면 <b>긴 변 최대 크기</b>를 올리거나 나눠서 합쳐 보세요.</li>
+      <li>원본 사진은 <b>따로 보관</b>하세요. 합치는 과정에서 화질이 줄어들 수 있습니다.</li>
+  </ol>
+  <div id="doneAd"><span class="ad-lab">광고</span><div class="ad-slot" id="ad-done"></div></div>
+</section>
+
+<!-- 광고 자리 ② 본문 320×100 — 결과·출력이 끝난 자리에 둡니다(입력 중에는 광고를 띄우지 않는다는
+     애드핏 조항). 버튼·입력칸에서 18px 이상 떼어 놓습니다 -->
+<div class="ad-slot" id="ad-mid"></div>
+
+<section class="card">
+  <h2><span>이럴 때 씁니다</span><span class="n">5가지</span></h2>
+  <ul class="use">
+    <li><b>나눠 찍은 카톡·메신저 대화를 한 장으로</b>
+      <span class="d">스크롤하며 여러 번 캡처한 대화를 순서대로 넣고 <b>캡처 이어붙이기</b>를 고르면,
+        겹쳐 찍힌 부분과 위·아래에 반복되는 띠를 찾아 지우고 한 장의 긴 이미지로 잇습니다.</span></li>
+    <li><b>블로그·상세페이지용 세로로 긴 이미지</b>
+      <span class="d">조각내어 만든 상세페이지 이미지를 세로로 이어 하나로 만듭니다.
+        폭이 다른 사진은 <b>좁은 쪽에 맞추기</b>로 자동 정렬됩니다.</span></li>
+    <li><b>비교 사진 나란히 붙이기</b>
+      <span class="d">전·후 사진, 옵션 A와 B, 앞면과 뒷면을 가로로 붙여 한 장으로 보냅니다.
+        간격과 배경색을 주면 경계가 또렷해집니다.</span></li>
+    <li><b>여러 장을 격자 콜라주로</b>
+      <span class="d">여행 사진이나 상품 사진을 2~6열 격자로 묶습니다.
+        칸 비율을 정사각으로 두면 인스타그램에 그대로 올릴 수 있습니다.</span></li>
+    <li><b>남에게 보이면 안 되는 사진</b>
+      <span class="d">대화 내용·계약서 사진·가족 사진은 어디에도 올라가지 않습니다.
+        페이지를 연 뒤에는 인터넷을 끊어도 그대로 동작합니다.</span></li>
+  </ul>
+</section>
+
+<section class="card">
+  <h2><span>자주 묻는 질문</span></h2>
+
+  <details>
+    <summary>사진이 정말 서버로 안 올라가나요?</summary>
+    <p>올라가지 않습니다. 사진은 <b>브라우저 안에서만</b> 읽고 그려집니다.
+      확인하고 싶다면 사진을 넣기 전에 <b>인터넷을 끊고</b> 써 보세요. 그대로 합쳐지고 내려받아집니다.
+      (인터넷을 끊으면 위쪽 광고 자리만 비게 됩니다.)</p>
+  </details>
+
+  <details>
+    <summary>겹치는 부분은 어떻게 찾아내나요?</summary>
+    <p>앞 사진의 아래쪽과 뒷 사진의 위쪽을 <b>가로 줄 단위로 밝기를 비교</b>해,
+      가장 잘 맞아떨어지는 만큼을 겹친 부분으로 봅니다. 먼저 크게 훑어 대략의 위치를 잡고,
+      그 근처를 한 줄씩 다시 맞춰 정확한 경계를 찾습니다.
+      <b>같은 화면을 스크롤하며 찍은 캡처</b>에서 잘 맞고, 서로 다른 장면의 사진에서는 겹침이 없다고 판단해 그냥 이어 붙입니다.
+      찾지 못하면 그 자리에 안내가 뜹니다.</p>
+  </details>
+
+  <details>
+    <summary>이어붙였는데 중간이 어긋납니다</summary>
+    <p>세 가지를 확인해 보세요. ① <b>순서</b>가 맞는지 — 이름순 정렬을 눌러 보세요.
+      ② 캡처마다 <b>폭이 다르면</b> 크기를 맞추느라 미세하게 흐려질 수 있습니다.
+      ③ 대화창에 <b>움직이는 이미지·영상</b>이 걸쳐 있으면 같은 자리가 서로 다르게 찍혀 못 찾습니다.
+      이럴 때는 <b>겹치는 부분 자동으로 찾아 지우기</b>를 끄고 캡처를 다시 찍어 주세요.</p>
+  </details>
+
+  <details>
+    <summary>사진이 몇 장까지, 얼마나 크게 되나요?</summary>
+    <p>장수 제한은 없지만 전부 메모리에서 처리하므로 <b>PC는 40~60장, 스마트폰은 15~25장</b> 정도가 편합니다.
+      결과 이미지가 기기가 감당하는 한계를 넘으면 <b>자동으로 줄여 저장</b>하고 그 사실을 알려 드립니다.
+      아이폰·아이패드는 이 한계가 낮은 편이라(가로×세로 약 1,670만 픽셀) 긴 이미지에서 자주 걸립니다.
+      미리 줄이고 싶으면 <b>긴 변 최대 크기</b>를 정해 두세요.</p>
+  </details>
+
+  <details>
+    <summary>화질이 나빠지나요?</summary>
+    <p>원본을 그대로 복사해 붙이는 것이 아니라 <b>새 이미지로 다시 그리는</b> 방식이라,
+      크기를 맞추며 확대·축소된 사진은 원본과 완전히 같지는 않습니다.
+      글자가 많은 캡처는 <b>PNG</b>가 가장 깨끗하고, 사진은 <b>JPG 품질 92</b> 정도면 눈으로 차이를 느끼기 어렵습니다.
+      원본 크기를 유지하려면 크기 맞추기를 <b>원본 크기 그대로</b>로 두세요.</p>
+  </details>
+
+  <details>
+    <summary>아이폰 사진(HEIC)도 되나요?</summary>
+    <p>아이폰·아이패드의 사파리에서는 그대로 열립니다. 하지만 <b>윈도우·안드로이드의 크롬에서는 HEIC를 읽지 못합니다.</b>
+      이럴 때는 아이폰 설정에서 <b>사진 → 전송 시 자동 변환</b>을 켜서 JPG로 내보내거나,
+      <b>HEIC → JPG 변환 도구</b>로 먼저 바꾼 뒤 넣어 주세요.
+      읽지 못한 파일은 목록에 빨간 글씨로 표시됩니다.</p>
+  </details>
+
+  <details>
+    <summary>움직이는 GIF를 넣으면요?</summary>
+    <p><b>첫 장면만</b> 정지 이미지로 들어갑니다. 결과물도 움직이지 않는 한 장의 이미지입니다.</p>
+  </details>
+
+  <details>
+    <summary>사진이 옆으로 누워서 들어갑니다</summary>
+    <p>사진에 기록된 <b>방향 정보(EXIF)</b>를 읽어 바로 세워 넣습니다.
+      그래도 누워 있다면 목록에서 그 사진의 <b>↻ 버튼</b>을 눌러 90도씩 돌리세요. 미리보기가 바로 따라옵니다.</p>
+  </details>
+
+  <details>
+    <summary>아이폰·안드로이드에서도 되나요?</summary>
+    <p>됩니다. 사진 선택 화면에서 여러 장을 한 번에 고를 수 있고, 순서는 ↑↓ 버튼으로 바꿉니다.
+      내려받기를 누르면 사진 앱이나 파일 앱에 저장됩니다.
+      아이폰에서 저장이 바로 안 되면 <b>새 창에서 원본 크기로 보기</b>를 누른 뒤 이미지를 길게 눌러 저장하세요.</p>
+  </details>
+</section>
+
+
+<!-- ══ 주의 문구 ══ -->
+<div class="nbx">
+  <div class="nbx-h"><span class="ic">!</span><span>저장하기 전에 확인하세요</span></div>
+  <ul>
+    <li><b>보내기 전에 반드시 미리보기를 끝까지 내려 보며 확인하세요.</b>
+      겹침 자동 제거는 밝기 비교로 <b>추정</b>하는 기능이라, 비슷한 화면이 반복되면
+      <b>필요한 내용까지 잘리거나 같은 내용이 두 번 남을 수 있습니다.</b>
+      대화·계약 내용처럼 빠지면 안 되는 자료는 원본 캡처와 대조해 주세요.</li>
+    <li><b>결과는 새로 그린 이미지입니다.</b> 원본에 있던 촬영 정보(EXIF·위치·날짜)는 남지 않고,
+      크기를 맞추며 확대·축소된 사진은 원본과 화질이 달라집니다.
+      <b>원본 사진은 결과를 확인하기 전에 지우지 마세요.</b></li>
+    <li>합친 이미지에 <b>남의 얼굴·연락처·계좌번호·주민등록번호</b>가 담기지 않았는지 확인하고,
+      필요하면 가려서 보내세요. 대화 캡처를 당사자 동의 없이 공개하면
+      <b>법적 문제가 될 수 있습니다.</b> 이미지를 어디에 제출한다면 기관별 규정(형식·용량·해상도)을 따로 확인하세요.</li>
+  </ul>
+  <p class="nbx-f">이 도구는 <b>있는 그대로 제공되며</b>, 이를 사용해 만든 이미지로 발생한
+    어떠한 손해에 대해서도 <b>제작자와 운영자는 법적 책임을 지지 않습니다.</b></p>
+</div>
+
+<footer>
+  <b>이미지 합치기</b> · 업로드 없이 브라우저에서 처리<br>
+  겹침 찾기는 가로 줄 밝기 비교(2단계 탐색) · 반복되는 위·아래 띠 자동 검출<br>
+  Canvas 2D로 직접 그립니다 · 외부 라이브러리 없음 · 기기별 캔버스 한계 자동 감지<br>
+  사진은 어디에도 전송되지 않으며, 페이지를 연 뒤에는 인터넷 없이도 동작합니다.
+</footer>
+</div>
+<div id="toast"></div>
+
+<!-- 광고 자리 ④ 하단 오버형 320×50(모바일) — 읽는 구간에서만 올라오고, 작업 중에는
+     내려가 있습니다. 바 높이만큼 본문 아래 여백을 늘려 아무것도 가리지 않습니다 -->
+<div id="anchor"><span class="amk">광고</span><div class="ad-slot" id="ad-anchor"></div>
+  <button class="axl" id="anchorX" type="button" aria-label="광고 닫기">✕</button></div>
+
+<script>
+"use strict";
+const $  = s => document.querySelector(s);
+const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
+
+/* ══════════════════════════════════════════════════════════
+   상태
+   ══════════════════════════════════════════════════════════ */
+let items = [];          // {id,name,size,bmp,w,h,rot,rcan,rcanRot,bad}
+let mode  = 'v';         // v 세로 · h 가로 · g 격자 · s 캡처 이어붙이기
+let seq   = 0;
+const opt = {
+  fit:'min', cols:0, ratio:0, gfill:'cover', align:'center',
+  gap:0, pad:0, bg:'#ffffff', bgTrans:false,
+  overlap:true, fixed:true,
+  fmt:'image/jpeg', q:0.92, cap:0
+};
+
+const MODE_DESC = {
+  v:'위에서 아래로 차례대로 붙입니다. 상세페이지·긴 이미지를 만들 때 씁니다.',
+  h:'왼쪽에서 오른쪽으로 나란히 붙입니다. 전·후 비교 사진에 좋습니다.',
+  g:'바둑판처럼 여러 칸에 나눠 담습니다. 콜라주·썸네일 모음에 씁니다.',
+  s:'세로로 붙이되 <b>겹쳐 찍힌 부분</b>과 <b>모든 장에 똑같이 있는 위·아래 띠</b>를 찾아 지웁니다. 스크롤하며 나눠 찍은 캡처를 한 장으로 잇습니다.'
+};
+
+const toastEl = $('#toast');
+let toastT = null;
+function toast(m){
+  toastEl.textContent = m; toastEl.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(()=>toastEl.classList.remove('show'), 2300);
+}
+const nf = n => n.toLocaleString('ko-KR');
+function kb(b){
+  if(b < 1024) return b + 'B';
+  if(b < 1024*1024) return (b/1024).toFixed(b<10240?1:0) + 'KB';
+  return (b/1048576).toFixed(2) + 'MB';
+}
+
+/* ══════════════════════════════════════════════════════════
+   이미지 읽기 · 회전
+   ══════════════════════════════════════════════════════════ */
+async function loadBitmap(file){
+  if(self.createImageBitmap){
+    try{ return await createImageBitmap(file, {imageOrientation:'from-image'}); }catch(e){}
+    try{ return await createImageBitmap(file); }catch(e){}
+  }
+  return await new Promise((res, rej)=>{
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload  = ()=>{ URL.revokeObjectURL(url); res(im); };
+    im.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('decode')); };
+    im.src = url;
+  });
+}
+function dimOf(it){ return (it.rot===90||it.rot===270) ? {w:it.h, h:it.w} : {w:it.w, h:it.h}; }
+function drawable(it){
+  if(it.rot === 0) return it.bmp;
+  if(it.rcan && it.rcanRot === it.rot) return it.rcan;
+  const d = dimOf(it), c = document.createElement('canvas');
+  c.width = d.w; c.height = d.h;
+  const x = c.getContext('2d');
+  if(it.rot === 90){ x.translate(d.w, 0); x.rotate(Math.PI/2); }
+  else if(it.rot === 180){ x.translate(d.w, d.h); x.rotate(Math.PI); }
+  else { x.translate(0, d.h); x.rotate(-Math.PI/2); }
+  x.drawImage(it.bmp, 0, 0);
+  it.rcan = c; it.rcanRot = it.rot;
+  return c;
+}
+function makeThumb(it){
+  const S = 96, c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const x = c.getContext('2d'), d = dimOf(it);
+  const s = Math.min(S/d.w, S/d.h), w = d.w*s, h = d.h*s;
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(drawable(it), (S-w)/2, (S-h)/2, w, h);
+  try{ return c.toDataURL('image/png'); }catch(e){ return ''; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   겹침 찾기
+     · SIGW 폭으로 줄인 흑백 줄(row) 밝기만 비교한다.
+     · 1단계 : F줄씩 묶어 성글게 훑어 대략의 위치를 잡고
+       2단계 : 그 둘레를 한 줄씩 다시 맞춘다.  O(n²) 을 감당하려는 것.
+   ══════════════════════════════════════════════════════════ */
+const SIGW = 40;
+const TOL_FIXED = 8;      // 반복 띠로 볼 줄당 평균 밝기차
+const TOL_MATCH = 7;      // 겹침으로 인정할 줄당 평균 밝기차
+const TOL_TEX   = 3;      // 겹친 자리에 최소한 이만큼의 무늬는 있어야 한다
+
+function sigOf(it, d, tw){
+  const dh = Math.max(1, Math.round(d.h * tw / d.w));
+  const c = document.createElement('canvas');
+  c.width = SIGW; c.height = dh;
+  const x = c.getContext('2d', {willReadFrequently:true});
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  x.drawImage(drawable(it), 0, 0, SIGW, dh);
+  const px = x.getImageData(0, 0, SIGW, dh).data;
+  const g = new Uint8Array(SIGW*dh);
+  for(let i=0, j=0; j<g.length; i+=4, j++) g[j] = (px[i]*77 + px[i+1]*150 + px[i+2]*29) >> 8;
+  c.width = c.height = 0;
+  return {g, h:dh};
+}
+function rowDiff(a, ai, b, bi){
+  let s = 0;
+  for(let x=0; x<SIGW; x++) s += Math.abs(a[ai+x] - b[bi+x]);
+  return s / SIGW;
+}
+function detectFixed(sigs){
+  const n = sigs.length, minH = Math.min.apply(null, sigs.map(s=>s.h));
+  const lim = Math.floor(minH * 0.42);
+  let top = 0, bot = 0;
+  L1: for(; top<lim; top++){
+    for(let k=1; k<n; k++)
+      if(rowDiff(sigs[0].g, top*SIGW, sigs[k].g, top*SIGW) > TOL_FIXED) break L1;
+  }
+  L2: for(; bot<lim; bot++){
+    for(let k=1; k<n; k++)
+      if(rowDiff(sigs[0].g, (sigs[0].h-1-bot)*SIGW, sigs[k].g, (sigs[k].h-1-bot)*SIGW) > TOL_FIXED) break L2;
+  }
+  if(top < 4) top = 0;
+  if(bot < 4) bot = 0;
+  // 경계 한 줄은 축소하며 위아래가 섞여 '같은 줄' 판정을 벗어난다.
+  // 그대로 두면 이음매마다 띠가 1px 남는다 — 안쪽으로 조금 더 잘라 낸다.
+  const guard = 3, cap = Math.floor(minH*0.42);
+  if(top) top = Math.min(top + guard, cap);
+  if(bot) bot = Math.min(bot + guard, cap);
+  if(top + bot > minH*0.72){ top = 0; bot = 0; }
+  return {top, bot};
+}
+function coarse(sig, y0, y1, F, alignEnd){
+  const rows = Math.floor((y1-y0)/F);
+  const base = alignEnd ? (y1 - rows*F) : y0;
+  const a = new Float32Array(rows*SIGW);
+  for(let r=0; r<rows; r++){
+    const o = (base + r*F)*SIGW;
+    for(let x=0; x<SIGW; x++){
+      let s = 0;
+      for(let k=0; k<F; k++) s += sig.g[o + k*SIGW + x];
+      a[r*SIGW + x] = s/F;
+    }
+  }
+  return {a, rows};
+}
+function texture(sig, y0, y1){
+  const n = (y1-y0)*SIGW;
+  if(n <= 0) return 0;
+  let s = 0, s2 = 0;
+  for(let i=y0*SIGW; i<y1*SIGW; i++){ const v = sig.g[i]; s += v; s2 += v*v; }
+  return Math.sqrt(Math.max(0, s2/n - (s/n)*(s/n)));
+}
+function findOverlap(A, y0a, y1a, B, y0b, y1b){
+  const ha = y1a - y0a, hb = y1b - y0b;
+  if(ha < 24 || hb < 24) return null;
+  const maxV = Math.floor(Math.min(ha, hb) * 0.94);
+  const minV = Math.max(10, Math.round(Math.min(ha, hb) * 0.02));
+  if(maxV <= minV) return null;
+
+  const F  = Math.max(1, Math.round(Math.max(ha, hb) / 260));
+  const ca = coarse(A, y0a, y1a, F, true), cb = coarse(B, y0b, y1b, F, false);
+  const cMax = Math.min(Math.floor(maxV/F), ca.rows, cb.rows);
+  const cMin = Math.max(2, Math.ceil(minV/F));
+  if(cMax <= cMin) return null;
+
+  let bv = -1, bd = Infinity;
+  const ds = [];
+  for(let v=cMin; v<=cMax; v++){
+    let s = 0;
+    for(let r=0; r<v; r++){
+      const ai = (ca.rows - v + r)*SIGW, bi = r*SIGW;
+      for(let x=0; x<SIGW; x++) s += Math.abs(ca.a[ai+x] - cb.a[bi+x]);
+    }
+    const d = s/(v*SIGW);
+    ds.push(d);
+    if(d < bd){ bd = d; bv = v; }
+  }
+  if(bv < 0) return null;
+  // 두드러진 최저점인지 — 어디서나 비슷하게 맞으면(반복 무늬·여백) 믿지 않는다
+  const sorted = ds.slice().sort((p,q)=>p-q);
+  const med = sorted[sorted.length>>1];
+  const distinct = (bd < med*0.6 + 0.4);
+
+  let fv = -1, fd = Infinity;
+  const lo = Math.max(minV, (bv-1)*F), hi = Math.min(maxV, (bv+1)*F);
+  for(let v=lo; v<=hi; v++){
+    let s = 0;
+    for(let r=0; r<v; r++){
+      const ai = (y1a - v + r)*SIGW, bi = (y0b + r)*SIGW;
+      for(let x=0; x<SIGW; x++) s += Math.abs(A.g[ai+x] - B.g[bi+x]);
+    }
+    const d = s/(v*SIGW);
+    if(d < fd){ fd = d; fv = v; }
+  }
+  if(fv < 0) return null;
+  const tex = texture(A, y1a - fv, y1a);
+  const ok  = (fd < TOL_MATCH) && (tex > TOL_TEX) && distinct;
+  return {v:fv, d:fd, tex, ok};
+}
+
+let anaCache = {key:null, res:null};
+function analyze(list, dims, tw){
+  const key = list.map(it=>it.id+'.'+it.rot).join(',') + '|' + tw + '|' + (opt.fixed?1:0) + '|' + (opt.overlap?1:0);
+  if(anaCache.key === key) return anaCache.res;
+
+  const sigs = list.map((it,i)=>sigOf(it, dims[i], tw));
+  let fixed = {top:0, bot:0};
+  if(opt.fixed && list.length >= 2) fixed = detectFixed(sigs);
+
+  const ovs = [];
+  if(opt.overlap && list.length >= 2){
+    for(let i=0; i+1<list.length; i++){
+      const A = sigs[i], B = sigs[i+1];
+      const y0a = (i===0 ? 0 : fixed.top), y1a = A.h - fixed.bot;
+      const y0b = fixed.top,               y1b = B.h - ((i+1===list.length-1) ? 0 : fixed.bot);
+      const r = findOverlap(A, Math.max(0,y0a), Math.max(1,y1a), B, Math.max(0,y0b), Math.max(1,y1b));
+      ovs.push(r);
+    }
+  }
+  const res = {fixed, ovs, heights:sigs.map(s=>s.h)};
+  anaCache = {key, res};
+  return res;
+}
+
+/* ══════════════════════════════════════════════════════════
+   배치 계산 — 출력 픽셀 좌표로 조각 목록을 만든다
+   ══════════════════════════════════════════════════════════ */
+function targetW(dims){
+  if(opt.fit === 'min')   return Math.min.apply(null, dims.map(d=>d.w));
+  if(opt.fit === 'first') return dims[0].w;
+  return Math.max.apply(null, dims.map(d=>d.w));
+}
+function targetH(dims){
+  if(opt.fit === 'min')   return Math.min.apply(null, dims.map(d=>d.h));
+  if(opt.fit === 'first') return dims[0].h;
+  return Math.max.apply(null, dims.map(d=>d.h));
+}
+function buildLayout(){
+  const list = items.filter(it=>!it.bad && it.bmp);
+  if(!list.length) return null;
+  const dims = list.map(dimOf);
+  const gap = (mode === 's') ? 0 : opt.gap, pad = opt.pad;
+  const pieces = [];
+  const info = {cutTotal:0, cutCount:0, fail:0, fixed:null};
+  let outW, outH;
+
+  if(mode === 'v' || mode === 's'){
+    const free = (mode === 'v' && opt.fit === 'none');
+    const tw = targetW(dims);
+    let y = pad;
+
+    if(mode === 's'){
+      const ana = analyze(list, dims, tw);
+      info.fixed = ana.fixed;
+      list.forEach((it,i)=>{
+        const d = dims[i];
+        const dh = Math.max(1, Math.round(d.h * tw / d.w));
+        const ov = (i > 0 && ana.ovs[i-1] && ana.ovs[i-1].ok) ? ana.ovs[i-1].v : 0;
+        if(i > 0){
+          if(ov){ info.cutTotal += ov; info.cutCount++; }
+          else if(opt.overlap) info.fail++;
+        }
+        let y0 = (i === 0 ? 0 : ana.fixed.top) + ov;
+        let y1 = dh - (i === list.length-1 ? 0 : ana.fixed.bot);
+        if(y1 - y0 < 2){ y0 = 0; y1 = dh; }           // 안전장치 : 다 잘리면 원본 그대로
+        const sc = d.h / dh;
+        it._cut = (i === 0) ? 0 : Math.round((y0) );
+        pieces.push({it,
+          sx:0, sy:Math.min(d.h-1, y0*sc), sw:d.w, sh:Math.max(1, Math.min(d.h - y0*sc, (y1-y0)*sc)),
+          dx:pad, dy:y, dw:tw, dh:(y1-y0)});
+        y += (y1 - y0);
+      });
+      outW = tw + pad*2;
+      outH = y + pad;
+    }else{
+      list.forEach((it,i)=>{
+        const d = dims[i];
+        const dw = free ? d.w : tw;
+        const dh = free ? d.h : Math.max(1, Math.round(d.h * tw / d.w));
+        const x  = pad + (!free ? 0 : (opt.align==='start' ? 0 : opt.align==='end' ? (tw-dw) : Math.round((tw-dw)/2)));
+        it._cut = 0;
+        pieces.push({it, sx:0, sy:0, sw:d.w, sh:d.h, dx:x, dy:y, dw, dh});
+        y += dh + gap;
+      });
+      outW = tw + pad*2;
+      outH = y - gap + pad;
+    }
+
+  }else if(mode === 'h'){
+    const free = (opt.fit === 'none');
+    const th = targetH(dims);
+    let x = pad;
+    list.forEach((it,i)=>{
+      const d = dims[i];
+      const dh = free ? d.h : th;
+      const dw = free ? d.w : Math.max(1, Math.round(d.w * th / d.h));
+      const y  = pad + (!free ? 0 : (opt.align==='start' ? 0 : opt.align==='end' ? (th-dh) : Math.round((th-dh)/2)));
+      it._cut = 0;
+      pieces.push({it, sx:0, sy:0, sw:d.w, sh:d.h, dx:x, dy:y, dw, dh});
+      x += dw + gap;
+    });
+    outW = x - gap + pad;
+    outH = th + pad*2;
+
+  }else{ // 격자
+    const n = list.length;
+    let cols = opt.cols|0;
+    if(!cols) cols = Math.min(n, Math.max(2, Math.round(Math.sqrt(n))));
+    cols = Math.max(1, Math.min(cols, n));
+    const rows = Math.ceil(n/cols);
+    const cw = Math.max(1, Math.round(dims.reduce((s,d)=>s+d.w, 0)/n));
+    let ar = parseFloat(opt.ratio) || 0;
+    if(!ar) ar = dims.reduce((s,d)=>s + d.w/d.h, 0)/n;
+    const ch = Math.max(1, Math.round(cw/ar));
+    outW = pad*2 + cols*cw + gap*(cols-1);
+    outH = pad*2 + rows*ch + gap*(rows-1);
+    list.forEach((it,i)=>{
+      const d = dims[i];
+      const cx = pad + (i%cols)*(cw+gap), cy = pad + Math.floor(i/cols)*(ch+gap);
+      it._cut = 0;
+      if(opt.gfill === 'cover'){
+        const s = Math.max(cw/d.w, ch/d.h);
+        const sw = Math.min(d.w, cw/s), sh = Math.min(d.h, ch/s);
+        pieces.push({it, sx:(d.w-sw)/2, sy:(d.h-sh)/2, sw, sh, dx:cx, dy:cy, dw:cw, dh:ch});
+      }else{
+        const s = Math.min(cw/d.w, ch/d.h);
+        const dw = Math.max(1, Math.round(d.w*s)), dh = Math.max(1, Math.round(d.h*s));
+        pieces.push({it, sx:0, sy:0, sw:d.w, sh:d.h,
+          dx:cx + Math.round((cw-dw)/2), dy:cy + Math.round((ch-dh)/2), dw, dh});
+      }
+    });
+  }
+  return {outW:Math.max(1, Math.round(outW)), outH:Math.max(1, Math.round(outH)), pieces, info, count:list.length};
+}
+
+/* ══════════════════════════════════════════════════════════
+   그리기
+     조각의 경계는 스케일 후 정수로 맞춘다 — 안 그러면
+     이어붙인 자리에 1px 배경색 실선이 비친다.
+   ══════════════════════════════════════════════════════════ */
+function hasAlpha(){ return opt.fmt !== 'image/jpeg'; }
+function drawLayout(ctx, L, s, W, H){
+  ctx.clearRect(0, 0, W, H);
+  if(!(opt.bgTrans && hasAlpha())){ ctx.fillStyle = opt.bg; ctx.fillRect(0, 0, W, H); }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  for(let i=0; i<L.pieces.length; i++){
+    const p = L.pieces[i], img = drawable(p.it);
+    const X0 = Math.round(p.dx*s), Y0 = Math.round(p.dy*s);
+    const X1 = Math.round((p.dx+p.dw)*s), Y1 = Math.round((p.dy+p.dh)*s);
+    try{
+      ctx.drawImage(img, p.sx, p.sy, p.sw, p.sh, X0, Y0, Math.max(1,X1-X0), Math.max(1,Y1-Y0));
+    }catch(e){}
+  }
+}
+// 기기가 실제로 감당하는 캔버스인지 한 픽셀 찍어 확인한다.
+// iOS 사파리는 가로×세로 약 1,670만 픽셀을 넘으면 조용히 빈 이미지를 만든다.
+function tryCanvas(w, h){
+  try{
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const x = c.getContext('2d');
+    if(!x) return null;
+    x.fillStyle = '#ff0000'; x.fillRect(w-1, h-1, 1, 1);
+    const px = x.getImageData(w-1, h-1, 1, 1).data;
+    if(px[0] < 200 || px[3] < 200){ c.width = c.height = 0; return null; }
+    return c;
+  }catch(e){ return null; }
+}
+function fittedCanvas(w, h){
+  let s = 1;
+  if(opt.cap > 0){
+    const m = Math.max(w, h);
+    if(m > opt.cap) s = opt.cap/m;
+  }
+  for(let k=0; k<9; k++){
+    const W = Math.max(1, Math.round(w*s)), H = Math.max(1, Math.round(h*s));
+    const c = tryCanvas(W, H);
+    if(c) return {c, s, w:W, h:H, shrunk:(s<1)};
+    s *= 0.72;
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════
+   미리보기 · 내보내기 (넣거나 바꾸면 그때마다 다시 그린다)
+   ══════════════════════════════════════════════════════════ */
+let curURL = null, buildTimer = null, lastBuildMs = 0, building = false, pendingBuild = false, scrolled = false;
+
+function extOf(){ return opt.fmt === 'image/png' ? 'png' : opt.fmt === 'image/webp' ? 'webp' : 'jpg'; }
+function fileName(){
+  const raw = ($('#outName').value || '').trim().replace(/[\\/:*?"<>|]/g, '').slice(0, 80);
+  return (raw || '합친사진') + '.' + extOf();
+}
+function setDL(blob){
+  const a = $('#dl');
+  if(curURL){ URL.revokeObjectURL(curURL); curURL = null; }
+  if(!blob){ a.classList.add('off'); a.removeAttribute('href'); $('#tByte').textContent = '–'; return; }
+  curURL = URL.createObjectURL(blob);
+  a.href = curURL; a.download = fileName(); a.classList.remove('off');
+  $('#tByte').textContent = kb(blob.size);
+}
+function scheduleBuild(){
+  clearTimeout(buildTimer);
+  const wait = lastBuildMs > 1500 ? 1500 : lastBuildMs > 700 ? 900 : 280;
+  if(items.some(i=>!i.bad)){
+    $('#pvState').textContent = '다시 그리는 중…';
+    $('#pvState').classList.add('busy');
+    $('#pvBox').classList.add('dim');
+  }
+  buildTimer = setTimeout(runBuild, wait);
+}
+async function runBuild(){
+  if(building){ pendingBuild = true; return; }
+  building = true;
+  const t0 = performance.now();
+  try{ await doBuild(); }
+  catch(e){ $('#pvState').textContent = '오류'; toast('그리는 중 문제가 생겼습니다'); }
+  lastBuildMs = performance.now() - t0;
+  building = false;
+  $('#pvState').classList.remove('busy');
+  $('#pvBox').classList.remove('dim');
+  if(pendingBuild){ pendingBuild = false; runBuild(); }
+}
+function stitchNote(L){
+  const nb = $('#pvNote'), wb = $('#pvWarn');
+  items.forEach(it=>{
+    const el = document.getElementById('cut' + it.id);
+    if(el) el.textContent = (mode === 's' && it._cut) ? ('▲ 위 ' + nf(it._cut) + 'px 제거') : '';
+  });
+  if(mode !== 's'){ nb.classList.add('hide'); wb.classList.add('hide'); return; }
+  const f = L.info.fixed || {top:0, bot:0};
+  const bits = [];
+  if(L.info.cutCount) bits.push('겹친 부분 <b>' + L.info.cutCount + '곳</b>에서 <b>' + nf(L.info.cutTotal) + 'px</b> 잘라냄');
+  if(f.top) bits.push('모든 장에 반복되는 <b>위 ' + nf(f.top) + 'px</b> 제거');
+  if(f.bot) bits.push('<b>아래 ' + nf(f.bot) + 'px</b> 제거');
+  if(bits.length){
+    nb.innerHTML = '✂ ' + bits.join(' · ') + ' — <b>이어진 자리가 자연스러운지 미리보기로 확인하세요.</b>';
+    nb.classList.remove('hide');
+  }else nb.classList.add('hide');
+  if(L.info.fail){
+    wb.innerHTML = '<b>' + L.info.fail + '곳</b>은 겹치는 부분을 찾지 못해 그대로 이어 붙였습니다. ' +
+      '순서가 맞는지, 같은 화면을 스크롤하며 찍은 캡처가 맞는지 확인해 주세요.';
+    wb.classList.remove('hide');
+  }else wb.classList.add('hide');
+}
+async function doBuild(){
+  const L = buildLayout();
+  const has = !!L;
+  $('#pvCard').classList.toggle('hide', !has);
+  $('#outCard').classList.toggle('hide', !has);
+  if(!has){ setDL(null); $('#pvState').textContent = ''; return; }
+
+  // ① 미리보기 — 화면용으로 줄여 그린다 (빠르게)
+  const area = L.outW * L.outH;
+  let ps = Math.min(1, 1100/L.outW);
+  if(area*ps*ps > 4e6) ps = Math.sqrt(4e6/area);
+  if(L.outW*ps < 240) ps = Math.min(1, 240/L.outW);
+  const pw = Math.max(1, Math.round(L.outW*ps)), ph = Math.max(1, Math.round(L.outH*ps));
+  const pv = $('#pv');
+  const drawPv = ()=>{ pv.width = pw; pv.height = ph; drawLayout(pv.getContext('2d'), L, ps, pw, ph); };
+  drawPv();
+  $('#pvSub').textContent = L.count + '장';
+  $('#pvTitle').textContent = nf(L.outW) + ' × ' + nf(L.outH) + ' px' + (ps < 1 ? '  ·  미리보기 ' + Math.round(ps*100) + '%' : '');
+  stitchNote(L);
+  $('#tCnt').textContent = L.count + '장';
+  $('#pvState').textContent = '저장본 만드는 중…';
+
+  await new Promise(r=>setTimeout(r, 0));
+
+  // ② 저장본 — 실제 크기로 그려 blob 을 만들어 내려받기 링크에 물린다.
+  //    아이폰·아이패드는 '페이지 안의 모든 캔버스 합계'에 한계가 있어,
+  //    큰 결과를 만드는 동안에는 미리보기 캔버스를 잠시 비워 자리를 내준다.
+  const big = (area > 6e6);
+  if(big){ pv.width = 0; pv.height = 0; }
+  const fit = fittedCanvas(L.outW, L.outH);
+  const wb = $('#warnBox');
+  if(!fit){
+    if(big) drawPv();
+    setDL(null);
+    $('#tSize').textContent = '–';
+    wb.innerHTML = '결과가 <b>' + nf(L.outW) + ' × ' + nf(L.outH) + 'px</b> 로 이 기기가 만들 수 있는 한계를 넘었습니다. ' +
+      '<b>긴 변 최대 크기</b>를 정하거나 사진 수를 줄여 주세요.';
+    wb.classList.remove('hide');
+    $('#pvState').textContent = '너무 큼';
+    return;
+  }
+  drawLayout(fit.c.getContext('2d'), L, fit.s, fit.w, fit.h);
+  const blob = await new Promise(res=>{
+    try{ fit.c.toBlob(res, opt.fmt, opt.fmt === 'image/png' ? undefined : opt.q); }
+    catch(e){ res(null); }
+  });
+  fit.c.width = fit.c.height = 0;
+  if(big) drawPv();
+  $('#tSize').textContent = nf(fit.w) + '×' + nf(fit.h);
+  if(!blob){
+    setDL(null);
+    wb.innerHTML = '이 브라우저가 결과 이미지를 만들지 못했습니다. 형식을 <b>JPG</b>로 바꾸거나 크기를 줄여 보세요.';
+    wb.classList.remove('hide');
+    $('#pvState').textContent = '실패';
+    return;
+  }
+  setDL(blob);
+
+  const msgs = [];
+  if(fit.s < 1) msgs.push('원본 <b>' + nf(L.outW) + '×' + nf(L.outH) + 'px</b> 를 <b>' + Math.round(fit.s*100) + '%</b> 로 줄여 저장합니다' +
+    (opt.cap > 0 ? ' (긴 변 최대 ' + nf(opt.cap) + 'px 설정)' : ' (이 기기의 캔버스 한계)') + '.');
+  if(opt.bgTrans && !hasAlpha()) msgs.push('JPG는 투명을 담지 못해 <b>배경색</b>으로 채워집니다. 투명이 필요하면 PNG나 WEBP로 저장하세요.');
+  if(msgs.length){ wb.innerHTML = msgs.join('<br>'); wb.classList.remove('hide'); }
+  else wb.classList.add('hide');
+
+  $('#pvState').textContent = '준비됨';
+  $('#outHint').textContent = extOf().toUpperCase();
+  if(!scrolled){ scrolled = true; try{ $('#pvCard').scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){} }
+}
+
+/* ══════════════════════════════════════════════════════════
+   목록
+   ══════════════════════════════════════════════════════════ */
+function render(){
+  const n = items.length;
+  $('#cnt').textContent = n;
+  $('#sumPx').textContent = n ? ('원본 ' + kb(items.reduce((s,i)=>s + (i.size||0), 0))) : '';
+  $('#listCard').classList.toggle('hide', !n);
+  $('#optCard').classList.toggle('hide', !n);
+  $('#drop').classList.toggle('small', !!n);
+  const ul = $('#list');
+  ul.innerHTML = '';
+  items.forEach((it,i)=>{
+    const li = document.createElement('li');
+    li.className = 'item' + (it.bad ? ' bad' : '');
+    li.draggable = true;
+    li.dataset.i = i;
+    const d = it.bad ? {w:0, h:0} : dimOf(it);
+    li.innerHTML =
+      '<div class="idx" title="끌어서 순서 변경">' + (i+1) + '</div>' +
+      (it.bad ? '<div class="thumb"></div>' : '<img class="thumb" src="' + (it.thumb||'') + '" alt="">') +
+      '<div class="meta">' +
+        '<div class="fname"></div>' +
+        '<div class="fsz">' + (it.bad
+          ? '<span class="err">읽지 못했습니다 · HEIC 등 지원하지 않는 형식</span>'
+          : '<span>' + nf(d.w) + ' × ' + nf(d.h) + '</span><span>' + kb(it.size||0) + '</span>' +
+            '<span class="cut" id="cut' + it.id + '"></span>') +
+        '</div>' +
+        '<div class="opts">' +
+          (it.bad ? '' : '<button class="rot' + (it.rot?' on':'') + '" data-a="rot">↻ ' + it.rot + '°</button>') +
+          '<div class="ctl">' +
+            '<button class="sq" data-a="up" ' + (i===0?'disabled':'') + ' aria-label="위로">↑</button>' +
+            '<button class="sq" data-a="down" ' + (i===n-1?'disabled':'') + ' aria-label="아래로">↓</button>' +
+            '<button class="sq x" data-a="del" aria-label="삭제">✕</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    li.querySelector('.fname').textContent = it.name;
+    ul.appendChild(li);
+  });
+}
+function changed(){ anaCache.key = null; render(); scheduleBuild(); }
+
+async function addFiles(fl){
+  const files = Array.prototype.slice.call(fl).filter(f=>
+    /^image\//i.test(f.type) || /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(f.name||''));
+  if(!files.length){ toast('이미지 파일이 아닙니다'); return; }
+  $('#drop').classList.add('small');
+  let bad = 0;
+  for(const f of files){
+    const it = {id:++seq, name:f.name || ('붙여넣은 이미지 ' + (seq)), size:f.size||0, rot:0, bad:false};
+    try{
+      it.bmp = await loadBitmap(f);
+      it.w = it.bmp.width || it.bmp.naturalWidth;
+      it.h = it.bmp.height || it.bmp.naturalHeight;
+      if(!it.w || !it.h) throw new Error('size');
+      it.thumb = makeThumb(it);
+    }catch(e){ it.bad = true; bad++; }
+    items.push(it);
+  }
+  if(bad) toast(bad + '장은 읽지 못했습니다');
+  changed();
+}
+
+/* ══════════════════════════════════════════════════════════
+   화면 연결
+   ══════════════════════════════════════════════════════════ */
+function freeItem(it){
+  try{ if(it.bmp && it.bmp.close) it.bmp.close(); }catch(e){}
+  if(it.rcan){ it.rcan.width = it.rcan.height = 0; it.rcan = null; }
+}
+function applyMode(){
+  $$('.r-v,.r-h,.r-g,.r-s').forEach(el=>el.classList.toggle('hide', !el.classList.contains('r-' + mode)));
+  const noneOpt = $('#fit option[value="none"]');
+  if(mode === 's' && opt.fit === 'none'){ opt.fit = 'min'; $('#fit').value = 'min'; }
+  if(noneOpt) noneOpt.disabled = (mode === 's');
+  $('.r-align').classList.toggle('hide', !((mode === 'v' || mode === 'h') && opt.fit === 'none'));
+  $('#gapRow').classList.toggle('hide', mode === 's');
+  $('#fitLab').textContent   = (mode === 'h') ? '세로 높이 맞추기' : '가로 폭 맞추기';
+  $('#alignLab').textContent = (mode === 'h') ? '세로 정렬' : '가로 정렬';
+  const names = (mode === 'h') ? ['위', '가운데', '아래'] : ['왼쪽', '가운데', '오른쪽'];
+  $$('#align button').forEach((b,i)=>{ b.textContent = names[i]; });
+  const f = $('#fit');
+  f.options[0].textContent = (mode === 'h' ? '낮은' : '좁은') + ' 쪽에 맞추기 (잘림 없음 · 권장)';
+  f.options[1].textContent = (mode === 'h' ? '높은' : '넓은') + ' 쪽에 맞추기 (작은 사진이 커짐)';
+  $('#modeDesc').innerHTML = MODE_DESC[mode];
+  $('#modeHint').textContent = {v:'세로', h:'가로', g:'격자', s:'캡처 이어붙이기'}[mode];
+}
+function seg(id, cb){
+  const el = $('#' + id);
+  el.addEventListener('click', e=>{
+    const b = e.target.closest('button');
+    if(!b || b.disabled) return;
+    $$('#' + id + ' button').forEach(x=>x.classList.toggle('on', x === b));
+    cb(b.dataset.v);
+  });
+}
+
+const drop = $('#drop'), fileI = $('#file'), fileM = $('#fileMore');
+drop.addEventListener('click', ()=>fileI.click());
+fileI.addEventListener('change', e=>{ addFiles(e.target.files); fileI.value = ''; });
+fileM.addEventListener('change', e=>{ addFiles(e.target.files); fileM.value = ''; });
+$('#addMore').addEventListener('click', ()=>fileM.click());
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{ e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','dragend'].forEach(ev=>drop.addEventListener(ev, ()=>drop.classList.remove('over')));
+drop.addEventListener('drop', e=>{
+  e.preventDefault(); e.stopPropagation();
+  drop.classList.remove('over');
+  if(e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+window.addEventListener('dragover', e=>e.preventDefault());
+window.addEventListener('drop', e=>{
+  e.preventDefault();
+  if(e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+});
+window.addEventListener('paste', e=>{
+  const f = e.clipboardData && e.clipboardData.files;
+  if(f && f.length){ e.preventDefault(); addFiles(f); }
+});
+
+$('#list').addEventListener('click', e=>{
+  const b = e.target.closest('button[data-a]');
+  if(!b) return;
+  const li = b.closest('.item'), i = +li.dataset.i, a = b.dataset.a;
+  if(a === 'del'){ freeItem(items[i]); items.splice(i, 1); if(!items.length) scrolled = false; }
+  else if(a === 'up'   && i > 0)             { const t = items[i-1]; items[i-1] = items[i]; items[i] = t; }
+  else if(a === 'down' && i < items.length-1){ const t = items[i+1]; items[i+1] = items[i]; items[i] = t; }
+  else if(a === 'rot'){
+    const it = items[i];
+    it.rot = (it.rot + 90) % 360;
+    if(it.rcan){ it.rcan.width = it.rcan.height = 0; }
+    it.rcan = null; it.rcanRot = -1;
+    it.thumb = makeThumb(it);
+  }else return;
+  changed();
+});
+let dragI = -1;
+$('#list').addEventListener('dragstart', e=>{
+  const li = e.target.closest('.item');
+  if(!li) return;
+  dragI = +li.dataset.i;
+  li.classList.add('drag');
+  e.dataTransfer.effectAllowed = 'move';
+  try{ e.dataTransfer.setData('text/plain', String(dragI)); }catch(_){}
+});
+$('#list').addEventListener('dragover', e=>{
+  e.preventDefault();
+  const li = e.target.closest('.item');
+  if(!li) return;
+  $$('.item').forEach(x=>x.classList.remove('overdrop'));
+  li.classList.add('overdrop');
+});
+$('#list').addEventListener('drop', e=>{
+  e.preventDefault(); e.stopPropagation();
+  const li = e.target.closest('.item');
+  $$('.item').forEach(x=>{ x.classList.remove('overdrop'); x.classList.remove('drag'); });
+  if(!li || dragI < 0) return;
+  const to = +li.dataset.i;
+  if(to !== dragI){ items.splice(to, 0, items.splice(dragI, 1)[0]); changed(); }
+  dragI = -1;
+});
+$('#list').addEventListener('dragend', ()=>{
+  $$('.item').forEach(x=>{ x.classList.remove('overdrop'); x.classList.remove('drag'); });
+  dragI = -1;
+});
+
+const coll = new Intl.Collator('ko', {numeric:true, sensitivity:'base'});
+$('#sortName').addEventListener('click', ()=>{ items.sort((a,b)=>coll.compare(a.name, b.name)); changed(); toast('이름순(숫자 순서)으로 정렬했습니다'); });
+$('#reverse').addEventListener('click', ()=>{ items.reverse(); changed(); });
+$('#clear').addEventListener('click', ()=>{
+  items.forEach(freeItem); items = []; scrolled = false;
+  setDL(null); changed(); toast('모두 지웠습니다');
+});
+
+$('#tabs').addEventListener('click', e=>{
+  const b = e.target.closest('.tab');
+  if(!b) return;
+  mode = b.dataset.m;
+  $$('#tabs .tab').forEach(x=>x.classList.toggle('on', x === b));
+  applyMode(); scheduleBuild();
+});
+$('#fit').addEventListener('change', e=>{ opt.fit = e.target.value; applyMode(); scheduleBuild(); });
+$('#cols').addEventListener('change', e=>{ opt.cols = +e.target.value; scheduleBuild(); });
+$('#ratio').addEventListener('change', e=>{ opt.ratio = +e.target.value; scheduleBuild(); });
+$('#cap').addEventListener('change', e=>{ opt.cap = +e.target.value; scheduleBuild(); });
+seg('gfill', v=>{ opt.gfill = v; scheduleBuild(); });
+seg('align', v=>{ opt.align = v; scheduleBuild(); });
+seg('fmt',   v=>{ opt.fmt = v; $('#qRow').classList.toggle('hide', v === 'image/png'); scheduleBuild(); });
+$('#gap').addEventListener('input', e=>{ opt.gap = +e.target.value; $('#gapV').textContent = opt.gap; scheduleBuild(); });
+$('#pad').addEventListener('input', e=>{ opt.pad = +e.target.value; $('#padV').textContent = opt.pad; scheduleBuild(); });
+$('#q').addEventListener('input',   e=>{ opt.q = (+e.target.value)/100; $('#qV').textContent = e.target.value; scheduleBuild(); });
+$('#bg').addEventListener('input',  e=>{ opt.bg = e.target.value; scheduleBuild(); });
+$('#bgTrans').addEventListener('change',    e=>{ opt.bgTrans = e.target.checked; scheduleBuild(); });
+$('#optOverlap').addEventListener('change', e=>{ opt.overlap = e.target.checked; anaCache.key = null; scheduleBuild(); });
+$('#optFixed').addEventListener('change',   e=>{ opt.fixed   = e.target.checked; anaCache.key = null; scheduleBuild(); });
+$('#outName').addEventListener('input', ()=>{ const a = $('#dl'); if(a.getAttribute('href')) a.download = fileName(); });
+$('#pvFull').addEventListener('click', ()=>{
+  if(!curURL){ toast('아직 준비되지 않았습니다'); return; }
+  window.open(curURL, '_blank');
+});
+
+/* 시작 */
+(function boot(){
+  ['#ffffff','#000000','#f3f4f6','#111827','#fde68a','#dbeafe','#fecaca'].forEach(c=>{
+    const b = document.createElement('button');
+    b.className = 'sw'; b.type = 'button'; b.style.background = c; b.title = c;
+    b.addEventListener('click', ()=>{ opt.bg = c; $('#bg').value = c; scheduleBuild(); });
+    $('#sw').appendChild(b);
+  });
+  try{
+    const t = document.createElement('canvas');
+    t.width = t.height = 1;
+    if(t.toDataURL('image/webp').indexOf('data:image/webp') !== 0){
+      const b = $('#fmt button[data-v="image/webp"]');
+      if(b){ b.disabled = true; b.style.opacity = .4; b.title = '이 브라우저는 WEBP 저장을 지원하지 않습니다'; }
+    }
+  }catch(e){}
+  $('#gapV').textContent = opt.gap;
+  $('#padV').textContent = opt.pad;
+  $('#qV').textContent   = Math.round(opt.q*100);
+  applyMode();
+})();
+
+/* ════════════════════════════════════════════════════════════
+   광고(카카오 애드핏) — 한 화면에 최대 4곳까지만
+     ① 맨 위 320×50  ② 본문 320×100  ③ 저장 완료 카드 300×250  ④ 하단 오버형 320×50(모바일)
+   지키는 것
+     · 콘텐츠를 가리지 않는다 — 오버형은 본문 아래 여백을 같이 늘린다
+     · 안 보이는 자리는 미리 부르지 않는다(노출수를 인위적으로 늘리는 수단 금지).
+       애드핏 로더는 자기가 뜰 때 있는 ins 만 읽어서, 뒤늦게 넣은 ins 는 빈 채로 남는다
+     · 작업 중에는 오버형을 내려 둔다(핵심 행동 중 광고 노출 금지)
+     · 저장 완료 광고는 창으로 덮지 않고 본문에 카드로 펼친다(콘텐츠를 가리는 배치 금지)
+     · iframe 안에서는 넣지 않는다 — 아이프레임에서의 광고 호출은 금지.
+       티스토리 글처럼 이 도구를 끼워 넣은 쪽은 그 글의 광고 단위를 쓴다
+   ※ 단위 ID 는 애드핏에서 크기별로 따로 발급받아 아래 units 에만 적으면 된다.
+     같은 ID 를 두 자리에 쓰면 한 화면에 두 번 노출되어 정책 위반이다.
+   ════════════════════════════════════════════════════════════ */
+const AD = {
+  /* 애드핏 배너 크기 중 휴대폰에도 들어가는 320×50 · 320×100 · 300×250 만 쓴다.
+     PC 전용(728×90 · 160×600)을 섞지 않으면 같은 단위를 두 화면에서 그대로 쓸 수 있다 */
+  units: {
+    top:    { id: 'DAN-XXXXXXXXXXXXXXXX', w: 320, h: 50 },   /* 맨 위 · 모바일과 PC 크기가 같아 하나로 겸한다 */
+    mid:    { id: 'DAN-XXXXXXXXXXXXXXXX', w: 320, h: 100 },  /* 본문 · 모바일·PC 같은 자리라 하나로 쓴다 */
+    done:   { id: 'DAN-XXXXXXXXXXXXXXXX', w: 300, h: 250 },  /* 저장 완료 카드 · 모바일·PC 공통 */
+    anchor: { id: 'DAN-XXXXXXXXXXXXXXXX', w: 320, h: 50 }    /* 모바일 하단 오버형 (PC 에서는 안 뜬다) */
+  },
+  iframeOk: false,  /* iframe 안에서도 띄우려면 true (애드핏에서는 권하지 않음) */
+  popup: true,      /* 저장 완료 카드 */
+  overlay: true,    /* 하단 오버형 */
+  init() {
+    this.off = window.top !== window.self && !this.iframeOk;
+    this.pc = window.matchMedia('(min-width:980px)').matches;
+    if (this.off) { document.body.classList.add('no-ad'); return; }  /* 빈 자리가 남지 않게 접는다 */
+    this.put($('#ad-top'), 'top');
+    this.put($('#ad-mid'), 'mid');
+    /* 숨어 있는 자리(하단 오버형·저장 완료 카드)는 여기서 만들지 않는다.
+       화면에 나온 다음에 부른다 — 안 보이는 동안 부르면 보는 사람 없이 노출만 잡히고,
+       애드핏도 「노출수를 인위적으로 늘리는 수단」을 금지한다 */
+    this.load();
+    $('#doneHide').addEventListener('click', () => this.hideDone());
+    $('#anchorX').addEventListener('click', () => { this.closed = true; this.sync(); });
+    window.addEventListener('scroll', () => this.sync(), { passive: true });
+    window.addEventListener('resize', () => this.sync(), { passive: true });
+    document.addEventListener('focusin', () => this.sync());
+    document.addEventListener('focusout', () => setTimeout(() => this.sync(), 0));
+    /* 내려받기를 누른 뒤에 완료 카드를 펼친다 */
+    $('#dl').addEventListener('click', () => {
+      if ($('#dl').getAttribute('href')) this.done('사진을 저장했습니다. 열기 전에 이것만 확인하세요.');
+    });
+    this.sync();
+  },
+  /* 자리에 ins 를 만들어 둔다. 단위 ID 를 아직 안 넣었으면 점선 자리만 그리고 요청은 보내지 않는다.
+     높이는 min-height 로 — 내려온 광고가 적어 놓은 높이보다 길어도 잘리지 않게 */
+  put(box, key, preload) {
+    const u = this.units[key];
+    if (!box || !u || box.dataset.ad) return;
+    /* 창 크기가 바뀌어 자리가 늘어나도 한 페이지 4개를 넘기지 않는다(애드핏 SDK 도 4개까지만 받는다) */
+    if (document.querySelectorAll('ins.kakao_ad_area').length >= 4) return;
+    box.dataset.ad = key;
+    box.style.width = u.w + 'px';
+    if (/XXXX/.test(u.id)) { box.style.height = u.h + 'px'; box.innerHTML = '<div class="ad-ph">광고 ' + u.w + ' × ' + u.h + '</div>'; return; }
+    box.style.minHeight = u.h + 'px';
+    /* 광고가 안 내려오면 빈 칸이 남는다 — 공식 콜백으로 접는다. 단위가 여럿이면 이름이 서로 달라야 한다 */
+    const fail = 'adNone_' + box.id.replace(/-/g, '_');
+    window[fail] = () => {
+      box.classList.add('ad-none');
+      if (key === 'anchor') { this.closed = true; this.sync(); }
+      if (key === 'done') $('#doneAd').classList.add('ad-none');
+    };
+    const ins = document.createElement('ins');
+    ins.className = 'kakao_ad_area'; ins.style.display = 'none';
+    ins.setAttribute('data-ad-unit', u.id);
+    ins.setAttribute('data-ad-width', String(u.w));
+    ins.setAttribute('data-ad-height', String(u.h));
+    ins.setAttribute('data-ad-onfail', fail);
+    /* preload 를 켜면 애드핏이 「보이는 자리인가」 검사를 건너뛰고 0.7초마다 도는
+       preload 차례에 그려 넣는다 — 아직 숨어 있는 자리는 이 길로만 채울 수 있다 */
+    if (preload) ins.setAttribute('data-ad-preload', 'Y');
+    box.appendChild(ins);
+    this.need = true;
+  },
+  /* 숨어 있던 자리를 화면에 내놓은 뒤에 부른다 */
+  show(box, key) {
+    if (this.off || !box || box.dataset.ad) return;
+    this.put(box, key, true);
+    this.load();
+    try {
+      const ins = box.querySelector('ins');
+      if (ins && window.adfit && typeof window.adfit.render === 'function') window.adfit.render(ins);
+    } catch (e) { /* 안 되면 0.7초 뒤 preload 차례가 채운다 */ }
+  },
+  /* 자리를 다 만든 뒤 딱 한 번 */
+  load() {
+    if (!this.need || this.loaded) return;
+    this.loaded = true;
+    const s = document.createElement('script');
+    s.type = 'text/javascript'; s.async = true;
+    s.src = 'https://t1.kakaocdn.net/kas/static/ba.min.js';
+    document.body.appendChild(s);
+  },
+  /* 화면에 걸쳐 있으면 true */
+  onScreen(el) {
+    if (!el || el.classList.contains('hide')) return false;
+    const r = el.getBoundingClientRect();
+    if (!r.width && !r.height) return false;
+    return r.bottom > 0 && r.top < window.innerHeight;
+  },
+  /* 「작업 중」 판정 — 사진을 넣고 맞추고 내보내는 카드가 화면에 있거나, 그리는 중이거나,
+     입력칸에 커서가 있는 동안. 이 도구에는 하단 고정 바가 없어 화면 위치로 본다 */
+  busy() {
+    if (typeof building === 'boolean' && building) return true;
+    const ae = document.activeElement;
+    if (ae && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName)) return true;
+    return this.onScreen($('#drop')) || this.onScreen($('#listCard')) || this.onScreen($('#optCard'))
+        || this.onScreen($('#pvCard')) || this.onScreen($('#outCard'));
+  },
+  /* 하단 오버형 — 읽는 구간에서만 올라온다 */
+  sync() {
+    if (this.off || !this.overlay) return;
+    /* 화면을 돌리거나 창을 줄이면 PC↔모바일이 바뀐다 — 한 번 재 두지 않고 그때마다 다시 본다.
+       PC 로 넘어가면 show 가 false 라, 아래에서 바와 여백이 같이 걷힌다 */
+    this.pc = window.matchMedia('(min-width:980px)').matches;
+    const show = !this.pc && !this.closed && !this.busy() && window.scrollY > 320;
+    if (show === this.shown) return;
+    this.shown = show;
+    /* 맨 아래까지 내려간 상태에서 바가 올라오면 늘어난 여백만큼 다시 맞춘다 — 마지막 줄이 바에 가리지 않게 */
+    const atBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+    $('#anchor').classList.toggle('on', show);
+    document.body.classList.toggle('anch', show);
+    if (show) {
+      this.show($('#ad-anchor'), 'anchor');
+      if (atBottom) window.scrollTo(0, document.documentElement.scrollHeight);
+    }
+  },
+  /* 저장이 끝나면 본문에 결과 카드를 펼치고 그쪽을 보여 준다 — 창으로 덮지 않는다 */
+  done(msg) {
+    if (this.off || !this.popup) return;
+    $('#doneMsg').textContent = msg;
+    $('#doneCard').classList.remove('hide');
+    this.show($('#ad-done'), 'done');
+    clearTimeout(this.goT);
+    this.goT = setTimeout(() => {
+      $('#doneCard').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      this.sync();
+    }, 250);
+  },
+  hideDone() { $('#doneCard').classList.add('hide'); this.sync(); }
+};
+AD.init();
+</script>
+</body>
+</html>
